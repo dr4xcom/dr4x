@@ -1,0 +1,15 @@
+{
+  "app.name": "DR4X",
+  "nav.home": "Ana Sayfa",
+  "nav.search": "Ara",
+  "nav.doctors": "Doktorlar",
+  "nav.messages": "Mesajlar",
+  "nav.profile": "Profil",
+  "nav.settings": "Ayarlar",
+  "composer.placeholder": "Neler oluyor?",
+  "button.post": "Paylaş",
+  "button.reply": "Yanıtla",
+  "button.repost": "Yeniden paylaş",
+  "button.like": "Beğen",
+  "lang.title": "Dil"
+}

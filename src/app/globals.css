@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+/* =========================
+   Root Theme Variables
+   ========================= */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+/* ربط المتغيرات مع Tailwind (App Router / Next 16) */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* =========================
+   Dark Mode
+   ========================= */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+/* =========================
+   Base Body Styles
+   ========================= */
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100dvh;
+}
+
+/* =========================
+   RTL / LTR FOUNDATION
+   ========================= */
+html[dir="rtl"] body {
+  text-align: start;
+}
+html[dir="ltr"] body {
+  text-align: start;
+}
+
+/* =========================
+   Reusable UI Helpers
+   ========================= */
+.dr4x-card {
+  @apply rounded-2xl border border-slate-200 bg-white;
+}
+
+.break-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* =========================
+   DR4X Shell (Twitter Arabic order)
+   RTL: [Sidebar][Feed][Panel]  (يمين -> يسار)
+   LTR: [Sidebar][Feed][Panel]  (يسار -> يمين)
+   ========================= */
+
+.dr4x-shell {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+/* Desktop sizes like Twitter */
+@media (min-width: 768px) {
+  .dr4x-shell {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  /* Sidebar = ثابت مثل تويتر */
+  .dr4x-col-sidebar {
+    width: 280px;
+    flex: 0 0 280px;
+  }
+
+  /* Feed = أعرض ومركز */
+  .dr4x-col-feed {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 620px; /* قريب جدًا من Twitter */
+  }
+
+  /* Panel = متوسط */
+  .dr4x-col-panel {
+    width: 320px;
+    flex: 0 0 320px;
+  }
+
+  /* ترتيب الأعمدة لا نغيّره هنا
+     لأن ترتيب JSX هو: Sidebar ثم Feed ثم Panel
+     وdir يحدد بداية العرض تلقائيًا */
+  html[dir="rtl"] .dr4x-shell {
+    flex-direction: row;
+  }
+  html[dir="ltr"] .dr4x-shell {
+    flex-direction: row;
+  }
+}
+/* إخفاء شريط التمرير (Scrollbar) داخل العمود الأوسط فقط */
+.dr4x-no-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge القديم */
+}
+
+.dr4x-no-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none; /* Chrome/Safari */
+}

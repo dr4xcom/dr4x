@@ -1,0 +1,15 @@
+{
+  "app.name": "DR4X",
+  "nav.home": "Home",
+  "nav.search": "Search",
+  "nav.doctors": "Doctors",
+  "nav.messages": "Messages",
+  "nav.profile": "Profile",
+  "nav.settings": "Settings",
+  "composer.placeholder": "What’s happening?",
+  "button.post": "Post",
+  "button.reply": "Reply",
+  "button.repost": "Repost",
+  "button.like": "Like",
+  "lang.title": "Language"
+}

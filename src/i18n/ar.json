@@ -1,0 +1,15 @@
+{
+  "app.name": "DR4X",
+  "nav.home": "الرئيسية",
+  "nav.search": "بحث",
+  "nav.doctors": "الأطباء",
+  "nav.messages": "الرسائل",
+  "nav.profile": "الملف الشخصي",
+  "nav.settings": "الإعدادات",
+  "composer.placeholder": "ماذا يحدث الآن؟",
+  "button.post": "نشر",
+  "button.reply": "رد",
+  "button.repost": "إعادة نشر",
+  "button.like": "إعجاب",
+  "lang.title": "اللغة"
+}
