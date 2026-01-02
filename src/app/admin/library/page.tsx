@@ -3,8 +3,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/utils/supabase/client";
-import type { LibraryBook, LibraryCategory, LibraryCounts } from "@/components/library/types";
-import { fetchCategories, fetchCounts, isCurrentUserAdmin } from "@/components/library/lib";
+import type {
+  LibraryBook,
+  LibraryCategory,
+  LibraryCounts,
+} from "@/components/library/types";
+import {
+  fetchCategories,
+  fetchCounts,
+  isCurrentUserAdmin,
+} from "@/components/library/lib";
 import { lt, getLibraryLocale } from "@/components/library/i18n";
 
 type Tab = "pending" | "approved" | "rejected";
@@ -117,11 +125,15 @@ export default function AdminLibraryPage() {
 
     const payload: any = {
       title: (updated as any).title ?? (selected as any).title,
-      author_name: (updated as any).author_name ?? (selected as any).author_name,
-      description: (updated as any).description ?? (selected as any).description,
+      author_name:
+        (updated as any).author_name ?? (selected as any).author_name,
+      description:
+        (updated as any).description ?? (selected as any).description,
       toc: (updated as any).toc ?? (selected as any).toc,
-      category_id: (updated as any).category_id ?? (selected as any).category_id,
-      preview_enabled: (updated as any).preview_enabled ?? (selected as any).preview_enabled,
+      category_id:
+        (updated as any).category_id ?? (selected as any).category_id,
+      preview_enabled:
+        (updated as any).preview_enabled ?? (selected as any).preview_enabled,
       is_paid: (updated as any).is_paid ?? (selected as any).is_paid,
       price: (updated as any).price ?? (selected as any).price,
       currency: (updated as any).currency ?? (selected as any).currency,
@@ -217,7 +229,9 @@ export default function AdminLibraryPage() {
         setErr(error.message);
         return;
       }
-      setMsg(lt("updateBanner", locale));
+
+      // ✅ نستخدم "update" الموجودة في i18n
+      setMsg(lt("update", locale));
     } catch (e: any) {
       // إذا ما عندك library_settings أو RLS تمنع
       setErr(e?.message ?? "Error");
@@ -235,18 +249,26 @@ export default function AdminLibraryPage() {
   }
 
   if (admin === null) {
-    return <div className="mx-auto w-full max-w-6xl px-4 py-6 text-sm text-white/60">…</div>;
+    return (
+      <div className="mx-auto w-full max-w-6xl px-4 py-6 text-sm text-white/60">
+        …
+      </div>
+    );
   }
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6">
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-lg font-bold text-white">{lt("adminLibrary", locale)}</h1>
+        <h1 className="text-lg font-bold text-white">
+          {lt("adminLibrary", locale)}
+        </h1>
       </div>
 
       {/* Banner (اختياري) */}
       <div className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-4">
-        <div className="mb-2 text-sm font-semibold text-white/90">{lt("banner", locale)}</div>
+        <div className="mb-2 text-sm font-semibold text-white/90">
+          {lt("banner", locale)}
+        </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <input
             value={bannerUrl}
@@ -258,7 +280,7 @@ export default function AdminLibraryPage() {
             onClick={updateBanner}
             className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/90 hover:bg-white/10"
           >
-            {lt("updateBanner", locale)}
+            {lt("update", locale)}
           </button>
         </div>
       </div>
@@ -311,8 +333,12 @@ export default function AdminLibraryPage() {
                       : "border-white/10 bg-white/5 hover:bg-white/10"
                   }`}
                 >
-                  <div className="text-sm font-semibold text-white/90">{b.title}</div>
-                  <div className="text-xs text-white/70">{b.author_name ?? "—"}</div>
+                  <div className="text-sm font-semibold text-white/90">
+                    {b.title}
+                  </div>
+                  <div className="text-xs text-white/70">
+                    {b.author_name ?? "—"}
+                  </div>
                 </button>
               ))}
             </div>
@@ -360,17 +386,25 @@ function AdminEditor({
 }) {
   const [title, setTitle] = useState((book as any).title);
   const [author, setAuthor] = useState((book as any).author_name ?? "");
-  const [description, setDescription] = useState((book as any).description ?? "");
+  const [description, setDescription] = useState(
+    (book as any).description ?? ""
+  );
   const [toc, setToc] = useState((book as any).toc ?? "");
-  const [categoryId, setCategoryId] = useState<string>(String((book as any).category_id ?? ""));
+  const [categoryId, setCategoryId] = useState<string>(
+    String((book as any).category_id ?? "")
+  );
 
-  const [previewEnabled, setPreviewEnabled] = useState(!!(book as any).preview_enabled);
+  const [previewEnabled, setPreviewEnabled] = useState(
+    !!(book as any).preview_enabled
+  );
   const [isPaid, setIsPaid] = useState(!!(book as any).is_paid);
   const [price, setPrice] = useState((book as any).price?.toString?.() ?? "");
   const [currency, setCurrency] = useState((book as any).currency ?? "SAR");
   const [shelf, setShelf] = useState((book as any).shelf ?? "scientific");
 
-  const [reviewReason, setReviewReason] = useState((book as any).review_reason ?? "");
+  const [reviewReason, setReviewReason] = useState(
+    (book as any).review_reason ?? ""
+  );
 
   useEffect(() => {
     setTitle((book as any).title);
@@ -394,10 +428,12 @@ function AdminEditor({
     <div className="grid gap-4">
       <div className="grid grid-cols-3 gap-3 text-sm text-white/80">
         <div>
-          {lt("previewViews", locale)}: <span className="text-white/95">{previewViews}</span>
+          {lt("previewViews", locale)}:{" "}
+          <span className="text-white/95">{previewViews}</span>
         </div>
         <div>
-          {lt("downloads", locale)}: <span className="text-white/95">{downloadClicks}</span>
+          {lt("downloadClicks", locale)}:{" "}
+          <span className="text-white/95">{downloadClicks}</span>
         </div>
         <div>
           نجاح: <span className="text-white/95">{downloadSuccess}</span>
@@ -423,7 +459,9 @@ function AdminEditor({
       </div>
 
       <div className="grid gap-2">
-        <label className="text-sm text-white/80">{lt("category", locale)}</label>
+        <label className="text-sm text-white/80">
+          {lt("category", locale)}
+        </label>
         <select
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
@@ -451,7 +489,9 @@ function AdminEditor({
       </div>
 
       <div className="grid gap-2">
-        <label className="text-sm text-white/80">{lt("description", locale)}</label>
+        <label className="text-sm text-white/80">
+          {lt("description", locale)}
+        </label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -472,12 +512,20 @@ function AdminEditor({
 
       <div className="flex flex-wrap items-center gap-4">
         <label className="flex items-center gap-2 text-sm text-white/80">
-          <input type="checkbox" checked={previewEnabled} onChange={(e) => setPreviewEnabled(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={previewEnabled}
+            onChange={(e) => setPreviewEnabled(e.target.checked)}
+          />
           preview_enabled
         </label>
 
         <label className="flex items-center gap-2 text-sm text-white/80">
-          <input type="checkbox" checked={isPaid} onChange={(e) => setIsPaid(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={isPaid}
+            onChange={(e) => setIsPaid(e.target.checked)}
+          />
           {lt("paid", locale)}
         </label>
       </div>
@@ -485,7 +533,9 @@ function AdminEditor({
       {isPaid ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="grid gap-2">
-            <label className="text-sm text-white/80">{lt("price", locale)}</label>
+            <label className="text-sm text-white/80">
+              {lt("price", locale)}
+            </label>
             <input
               value={price}
               onChange={(e) => setPrice(e.target.value)}
@@ -493,7 +543,9 @@ function AdminEditor({
             />
           </div>
           <div className="grid gap-2">
-            <label className="text-sm text-white/80">{lt("currency", locale)}</label>
+            <label className="text-sm text-white/80">
+              {lt("currency", locale)}
+            </label>
             <input
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
@@ -515,7 +567,7 @@ function AdminEditor({
               preview_enabled: previewEnabled,
               is_paid: isPaid,
               price: isPaid && price ? Number(price) : null,
-              currency: isPaid ? (currency?.trim() || null) : null,
+              currency: isPaid ? currency?.trim() || null : null,
               shelf,
             } as any)
           }
@@ -533,7 +585,9 @@ function AdminEditor({
       </div>
 
       <div className="rounded-xl border border-white/10 bg-black/10 p-3">
-        <div className="mb-2 text-sm font-semibold text-white/90">{lt("reject", locale)}</div>
+        <div className="mb-2 text-sm font-semibold text-white/90">
+          {lt("reject", locale)}
+        </div>
         <textarea
           value={reviewReason}
           onChange={(e) => setReviewReason(e.target.value)}
