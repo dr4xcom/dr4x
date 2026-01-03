@@ -23,9 +23,11 @@ async function getUserIdFromBearer(
   return data.user?.id ?? null;
 }
 
-async function isAdmin(admin: ReturnType<typeof createClient>, uid: string) {
-  // 👈 نستخدم any هنا فقط لتسكيت TypeScript، الكود نفسه كما هو
-  const { data, error } = await (admin as any).rpc("is_admin", { p_uid: uid });
+// 🔴 هنا كان الخطأ – الآن عدلناه
+async function isAdmin(admin: any, uid: string) {
+  const { data, error } = await (admin as any).rpc("is_admin", {
+    p_uid: uid,
+  } as any);
   if (error) return false;
   return !!data;
 }
@@ -45,30 +47,33 @@ export async function POST(req: Request) {
     });
 
     const uid = await getUserIdFromBearer(supabaseAnon, req);
-    if (!uid)
+    if (!uid) {
       return NextResponse.json(
         { ok: false, error: "not authenticated" },
         { status: 401 }
       );
+    }
 
     const body = await req.json().catch(() => null);
     const path = String(body?.path || "");
     const bucket = String(body?.bucket || "clinic");
     const expiresIn = Number(body?.expiresIn || 600); // 10 دقائق
 
-    if (!path)
+    if (!path) {
       return NextResponse.json(
         { ok: false, error: "missing path" },
         { status: 400 }
       );
+    }
 
     // نستنتج consultationId من أول جزء من المسار
     const consultationId = path.split("/")[0] || "";
-    if (!consultationId)
+    if (!consultationId) {
       return NextResponse.json(
         { ok: false, error: "invalid path" },
         { status: 400 }
       );
+    }
 
     // تحقق صلاحية الوصول عبر consultation_queue
     const { data: qrow, error: qerr } = await supabaseAdmin
@@ -78,19 +83,21 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     if (qerr) throw qerr;
-    if (!qrow)
+    if (!qrow) {
       return NextResponse.json(
         { ok: false, error: "consultation not found" },
         { status: 404 }
       );
+    }
 
     const adminOk = await isAdmin(supabaseAdmin, uid);
     const ok = adminOk || uid === qrow.doctor_id || uid === qrow.patient_id;
-    if (!ok)
+    if (!ok) {
       return NextResponse.json(
         { ok: false, error: "forbidden" },
         { status: 403 }
       );
+    }
 
     const { data, error } = await supabaseAdmin.storage
       .from(bucket)
