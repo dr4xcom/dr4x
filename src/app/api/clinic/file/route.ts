@@ -10,26 +10,29 @@ function getEnv(name: string) {
   return v;
 }
 
-async function getUserIdFromBearer(
-  anon: ReturnType<typeof createClient>,
-  req: Request
-) {
+// نخلي النوع any عشان نرتاح من مشاكل الأنواع في الإنتاج
+async function getUserIdFromBearer(anon: any, req: Request) {
   const auth = req.headers.get("authorization") || "";
-  const token = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7) : null;
+  const token = auth.toLowerCase().startsWith("bearer ")
+    ? auth.slice(7)
+    : null;
+
   if (!token) return null;
 
   const { data, error } = await anon.auth.getUser(token);
   if (error) return null;
-  return data.user?.id ?? null;
+  return data?.user?.id ?? null;
 }
 
-// 🔴 هنا كان الخطأ – الآن عدلناه
+// برضه any لنفس السبب
 async function isAdmin(admin: any, uid: string) {
-  const { data, error } = await (admin as any).rpc("is_admin", {
-    p_uid: uid,
-  } as any);
-  if (error) return false;
-  return !!data;
+  try {
+    const { data, error } = await admin.rpc("is_admin", { p_uid: uid } as any);
+    if (error) return false;
+    return !!data;
+  } catch {
+    return false;
+  }
 }
 
 export async function POST(req: Request) {
@@ -102,9 +105,13 @@ export async function POST(req: Request) {
     const { data, error } = await supabaseAdmin.storage
       .from(bucket)
       .createSignedUrl(path, expiresIn);
+
     if (error) throw error;
 
-    return NextResponse.json({ ok: true, signedUrl: data?.signedUrl ?? null });
+    return NextResponse.json({
+      ok: true,
+      signedUrl: data?.signedUrl ?? null,
+    });
   } catch (e: any) {
     return NextResponse.json(
       { ok: false, error: e?.message ?? "file error" },
