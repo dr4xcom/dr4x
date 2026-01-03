@@ -16,16 +16,14 @@ function toInt(v: any) {
   return Number.isFinite(n) ? n : null;
 }
 
-// 👇 هنا التعديل فقط — جعلنا client من نوع any بدلاً من SupabaseClient
+// ✅ هنا التوقيع الجديد: لا يوجد SupabaseClient ولا ReturnType
 async function safeUpsert(
   client: any,
   table: string,
   payload: Record<string, any>,
   onConflict: string
 ) {
-  const { error } = await client
-    .from(table)
-    .upsert(payload as any, { onConflict });
+  const { error } = await client.from(table).upsert(payload as any, { onConflict });
   if (error) throw new Error(`${table} upsert error: ${error.message}`);
 }
 
@@ -39,11 +37,9 @@ export async function POST(req: Request) {
     });
 
     const body = await req.json().catch(() => null);
-    if (!body?.uid)
-      return NextResponse.json(
-        { ok: false, error: "missing uid" },
-        { status: 400 }
-      );
+    if (!body?.uid) {
+      return NextResponse.json({ ok: false, error: "missing uid" }, { status: 400 });
+    }
 
     const uid = String(body.uid);
     const mode = String(body.mode || "patient");
