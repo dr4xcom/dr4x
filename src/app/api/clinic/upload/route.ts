@@ -14,7 +14,7 @@ function safeFileName(name: string) {
   return name.replace(/[^\w.\-]+/g, "_");
 }
 
-// ✅ نخلي النوع any هنا عشان ما نتعلق مع Typescript
+// ✅ نستخدم any هنا عشان نرتاح من مشاكل التايب
 async function getUserIdFromBearer(anon: any, req: Request) {
   const auth = req.headers.get("authorization") || "";
   const token = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7) : null;
@@ -25,9 +25,11 @@ async function getUserIdFromBearer(anon: any, req: Request) {
   return data.user?.id ?? null;
 }
 
-// ✅ نفس الشي هنا + نجبر rpc على any
+// ✅ نفس الشي في isAdmin – نرخي التايب بالكامل
 async function isAdmin(admin: any, uid: string) {
-  const { data, error } = await (admin as any).rpc("is_admin", { p_uid: uid });
+  const { data, error } = await (admin as any).rpc("is_admin", {
+    p_uid: uid,
+  } as any);
   if (error) return false;
   return !!data;
 }
@@ -75,7 +77,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // تحقق صلاحية المستخدم عبر consultation_queue (بدون تعديل أي RLS)
+    // تحقق صلاحية المستخدم عبر consultation_queue
     const { data: qrow, error: qerr } = await supabaseAdmin
       .from("consultation_queue")
       .select("id, doctor_id, patient_id")
@@ -94,10 +96,10 @@ export async function POST(req: Request) {
     const isDoctor = uid === qrow.doctor_id;
     const isPatient = uid === qrow.patient_id;
 
-    // قواعد رفع بسيطة وآمنة:
-    // - المريض يرفع lab_result
-    // - الطبيب يرفع prescription
-    // - الأدمن مسموح له الاثنين (للطوارئ/الإشراف)
+    // قواعد الرفع:
+    // المريض -> lab_result
+    // الطبيب -> prescription
+    // الأدمن -> الاثنين
     if (!adminOk) {
       if (kind === "lab_result" && !isPatient) {
         return NextResponse.json(
@@ -129,7 +131,6 @@ export async function POST(req: Request) {
 
     if (upErr) throw upErr;
 
-    // رجّع Signed URL مباشرة (مريح للواجهة)
     const { data: signed, error: sErr } = await supabaseAdmin.storage
       .from(bucket)
       .createSignedUrl(path, 60 * 10); // 10 دقائق
