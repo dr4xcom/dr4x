@@ -4,9 +4,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
-import {
-  getSystemSettingString,
-} from "@/utils/systemSettings";
+import { getSystemSettingString } from "@/utils/systemSettings";
 
 type AnyProfile = {
   id: string;
@@ -126,13 +124,14 @@ export default function ProfilePage() {
   }
 
   function validateImage(file: File) {
-    const okType = ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(
-      file.type
-    );
+    const okType = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/gif",
+    ].includes(file.type);
     if (!okType)
-      throw new Error(
-        "صيغة الصورة غير مدعومة. استخدم JPG/PNG/WebP/GIF."
-      );
+      throw new Error("صيغة الصورة غير مدعومة. استخدم JPG/PNG/WebP/GIF.");
     const mb = file.size / (1024 * 1024);
     if (mb > MAX_MB)
       throw new Error(`حجم الصورة كبير. الحد الأقصى ${MAX_MB}MB.`);
@@ -186,17 +185,10 @@ export default function ProfilePage() {
 
         // ✅ تحميل مسار الصورة العامة من إعدادات المدير
         const centerPath =
-          (await getSystemSettingString(
-            supabase,
-            GLOBAL_CENTER_KEY,
-            ""
-          )) || "";
+          (await getSystemSettingString(GLOBAL_CENTER_KEY, "")) || "";
         let nextCenter = "";
         if (centerPath) {
-          nextCenter = await resolveSignedUrl(
-            GLOBAL_CENTER_BUCKET,
-            centerPath
-          );
+          nextCenter = await resolveSignedUrl(GLOBAL_CENTER_BUCKET, centerPath);
         }
 
         if (!alive) return;
@@ -236,10 +228,7 @@ export default function ProfilePage() {
     return ((s[0] ?? "D") + (s[1] ?? "R")).toUpperCase();
   }, [displayName]);
 
-  const hasBioField = useMemo(
-    () => profileKeys.includes("bio"),
-    [profileKeys]
-  );
+  const hasBioField = useMemo(() => profileKeys.includes("bio"), [profileKeys]);
   const hasCityField = useMemo(
     () => profileKeys.includes("city"),
     [profileKeys]
@@ -688,8 +677,8 @@ export default function ProfilePage() {
               {!hasShowFollowingField ? (
                 <div className="mt-1 text-[11px] text-red-400">
                   * لحفظ هذا الإعداد تحتاج عمود{" "}
-                  <span className="font-mono">show_following_list</span> في
-                  جدول <span className="font-mono">profiles</span>.
+                  <span className="font-mono">show_following_list</span> في جدول{" "}
+                  <span className="font-mono">profiles</span>.
                 </div>
               ) : null}
             </div>
