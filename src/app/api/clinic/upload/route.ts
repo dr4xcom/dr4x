@@ -14,7 +14,8 @@ function safeFileName(name: string) {
   return name.replace(/[^\w.\-]+/g, "_");
 }
 
-async function getUserIdFromBearer(anon: ReturnType<typeof createClient>, req: Request) {
+// ✅ نخلي النوع any هنا عشان ما نتعلق مع Typescript
+async function getUserIdFromBearer(anon: any, req: Request) {
   const auth = req.headers.get("authorization") || "";
   const token = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7) : null;
   if (!token) return null;
@@ -24,8 +25,9 @@ async function getUserIdFromBearer(anon: ReturnType<typeof createClient>, req: R
   return data.user?.id ?? null;
 }
 
-async function isAdmin(admin: ReturnType<typeof createClient>, uid: string) {
-  const { data, error } = await admin.rpc("is_admin", { p_uid: uid });
+// ✅ نفس الشي هنا + نجبر rpc على any
+async function isAdmin(admin: any, uid: string) {
+  const { data, error } = await (admin as any).rpc("is_admin", { p_uid: uid });
   if (error) return false;
   return !!data;
 }
@@ -48,7 +50,10 @@ export async function POST(req: Request) {
 
     const uid = await getUserIdFromBearer(supabaseAnon, req);
     if (!uid) {
-      return NextResponse.json({ ok: false, error: "not authenticated" }, { status: 401 });
+      return NextResponse.json(
+        { ok: false, error: "not authenticated" },
+        { status: 401 }
+      );
     }
 
     const form = await req.formData();
@@ -57,11 +62,17 @@ export async function POST(req: Request) {
     const file = form.get("file") as File | null;
 
     if (!consultationId || !file || !kind) {
-      return NextResponse.json({ ok: false, error: "missing fields" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "missing fields" },
+        { status: 400 }
+      );
     }
 
     if (!["lab_result", "prescription"].includes(kind)) {
-      return NextResponse.json({ ok: false, error: "invalid kind" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "invalid kind" },
+        { status: 400 }
+      );
     }
 
     // تحقق صلاحية المستخدم عبر consultation_queue (بدون تعديل أي RLS)
@@ -73,7 +84,10 @@ export async function POST(req: Request) {
 
     if (qerr) throw qerr;
     if (!qrow) {
-      return NextResponse.json({ ok: false, error: "consultation not found" }, { status: 404 });
+      return NextResponse.json(
+        { ok: false, error: "consultation not found" },
+        { status: 404 }
+      );
     }
 
     const adminOk = await isAdmin(supabaseAdmin, uid);
@@ -86,22 +100,32 @@ export async function POST(req: Request) {
     // - الأدمن مسموح له الاثنين (للطوارئ/الإشراف)
     if (!adminOk) {
       if (kind === "lab_result" && !isPatient) {
-        return NextResponse.json({ ok: false, error: "patient only" }, { status: 403 });
+        return NextResponse.json(
+          { ok: false, error: "patient only" },
+          { status: 403 }
+        );
       }
       if (kind === "prescription" && !isDoctor) {
-        return NextResponse.json({ ok: false, error: "doctor only" }, { status: 403 });
+        return NextResponse.json(
+          { ok: false, error: "doctor only" },
+          { status: 403 }
+        );
       }
     }
 
     const bytes = new Uint8Array(await file.arrayBuffer());
     const bucket = "clinic";
-    const path = `${consultationId}/${kind}/${Date.now()}_${safeFileName(file.name)}`;
+    const path = `${consultationId}/${kind}/${Date.now()}_${safeFileName(
+      file.name
+    )}`;
 
-    const { error: upErr } = await supabaseAdmin.storage.from(bucket).upload(path, bytes, {
-      contentType: file.type || "application/octet-stream",
-      upsert: false,
-      cacheControl: "3600",
-    });
+    const { error: upErr } = await supabaseAdmin.storage
+      .from(bucket)
+      .upload(path, bytes, {
+        contentType: file.type || "application/octet-stream",
+        upsert: false,
+        cacheControl: "3600",
+      });
 
     if (upErr) throw upErr;
 
