@@ -16,13 +16,16 @@ function toInt(v: any) {
   return Number.isFinite(n) ? n : null;
 }
 
+// 👇 هنا التعديل فقط — جعلنا client من نوع any بدلاً من SupabaseClient
 async function safeUpsert(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  client: any,
   table: string,
   payload: Record<string, any>,
   onConflict: string
 ) {
-  const { error } = await supabaseAdmin.from(table).upsert(payload as any, { onConflict });
+  const { error } = await client
+    .from(table)
+    .upsert(payload as any, { onConflict });
   if (error) throw new Error(`${table} upsert error: ${error.message}`);
 }
 
@@ -36,7 +39,11 @@ export async function POST(req: Request) {
     });
 
     const body = await req.json().catch(() => null);
-    if (!body?.uid) return NextResponse.json({ ok: false, error: "missing uid" }, { status: 400 });
+    if (!body?.uid)
+      return NextResponse.json(
+        { ok: false, error: "missing uid" },
+        { status: 400 }
+      );
 
     const uid = String(body.uid);
     const mode = String(body.mode || "patient");
@@ -45,7 +52,7 @@ export async function POST(req: Request) {
     const patient = body.patient || {};
     const doctor = body.doctor || {};
 
-    // 1) profiles (حسب أعمدتك)
+    // 1) profiles
     await safeUpsert(
       supabaseAdmin,
       "profiles",
@@ -61,7 +68,7 @@ export async function POST(req: Request) {
     );
 
     if (mode === "patient") {
-      // 2) patients (حسب أعمدتك)
+      // 2) patients
       await safeUpsert(
         supabaseAdmin,
         "patients",
@@ -77,7 +84,7 @@ export async function POST(req: Request) {
         "profile_id"
       );
 
-      // 3) patient_extra (عندك فقط patient_id + age)
+      // 3) patient_extra
       await safeUpsert(
         supabaseAdmin,
         "patient_extra",
@@ -88,7 +95,7 @@ export async function POST(req: Request) {
         "patient_id"
       );
     } else {
-      // doctors (حسب أعمدتك)
+      // doctors
       await safeUpsert(
         supabaseAdmin,
         "doctors",
@@ -104,6 +111,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message ?? "onboard error" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: e?.message ?? "onboard error" },
+      { status: 500 }
+    );
   }
 }
