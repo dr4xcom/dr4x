@@ -61,7 +61,9 @@ export default function AdminPostsPage() {
         setPosts((prev) => (page === 0 ? list : [...prev, ...list]));
 
         // جلب profiles لأصحاب التغريدات
-        const ids = Array.from(new Set(list.map((p) => p.author_id).filter(Boolean) as string[]));
+        const ids = Array.from(
+          new Set(list.map((p) => p.author_id).filter(Boolean) as string[])
+        );
         if (ids.length) {
           const { data: profs, error: profErr } = await supabase
             .from("profiles")
@@ -118,6 +120,32 @@ export default function AdminPostsPage() {
     });
   }, [q, posts, profilesMap]);
 
+  async function handleDeletePost(id: string | number) {
+    const pid = String(id);
+
+    const ok = window.confirm(
+      "هل أنت متأكد من حذف هذه التغريدة بشكل نهائي؟"
+    );
+    if (!ok) return;
+
+    try {
+      const res = await fetch(`/api/posts/${pid}/delete`, {
+        method: "DELETE",
+      });
+      const body = await res.json().catch(() => ({} as any));
+
+      if (!res.ok) {
+        alert(body?.error ?? "فشل حذف التغريدة من الخادم.");
+        return;
+      }
+
+      // نحذفها من الواجهة بدون إعادة تحميل الصفحة
+      setPosts((prev) => prev.filter((p) => String(p.id) !== pid));
+    } catch (e: any) {
+      alert(e?.message ?? "حدث خطأ غير متوقع أثناء الحذف.");
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
@@ -125,7 +153,7 @@ export default function AdminPostsPage() {
           <div className="text-xs text-slate-400">Admin</div>
           <h2 className="text-lg font-extrabold">التغريدات</h2>
           <div className="text-sm text-slate-300">
-            مراجعة التغريدات + بحث (بدون حذف/إخفاء الآن) — بدون تعديل DB/RLS.
+            مراجعة التغريدات + بحث + حذف من لوحة التحكم (بدون تعديل DB/RLS).
           </div>
         </div>
 
@@ -168,7 +196,9 @@ export default function AdminPostsPage() {
                 <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <div className="text-sm font-extrabold">Post #{String(p.id)}</div>
+                      <div className="text-sm font-extrabold">
+                        Post #{String(p.id)}
+                      </div>
                       <span className="text-xs text-slate-500 truncate">
                         by: {safeText(p.author_id)}
                       </span>
@@ -180,15 +210,21 @@ export default function AdminPostsPage() {
                     <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-xs text-slate-300">
                       <div>
                         <span className="text-slate-500">الاسم:</span>{" "}
-                        <span className="font-semibold">{safeText(prof?.full_name)}</span>
+                        <span className="font-semibold">
+                          {safeText(prof?.full_name)}
+                        </span>
                       </div>
                       <div>
                         <span className="text-slate-500">Username:</span>{" "}
-                        <span className="font-semibold">{safeText(prof?.username)}</span>
+                        <span className="font-semibold">
+                          {safeText(prof?.username)}
+                        </span>
                       </div>
                       <div>
                         <span className="text-slate-500">Email:</span>{" "}
-                        <span className="font-semibold">{safeText(prof?.email)}</span>
+                        <span className="font-semibold">
+                          {safeText(prof?.email)}
+                        </span>
                       </div>
                     </div>
 
@@ -203,11 +239,10 @@ export default function AdminPostsPage() {
                   <div className="flex flex-wrap gap-2 justify-start lg:justify-end">
                     <button
                       type="button"
-                      disabled
-                      className="rounded-xl border border-slate-900 bg-slate-950/40 px-3 py-2 text-sm font-semibold text-slate-600 cursor-not-allowed"
-                      title="لاحقًا: إخفاء/حذف — قد يحتاج RPC حسب RLS"
+                      onClick={() => handleDeletePost(p.id)}
+                      className="rounded-xl border border-red-700/70 bg-red-900/20 px-3 py-2 text-sm font-semibold text-red-200 hover:bg-red-900/40 hover:border-red-500 transition"
                     >
-                      إجراءات (قريبًا)
+                      حذف التغريدة
                     </button>
                   </div>
                 </div>
@@ -218,7 +253,8 @@ export default function AdminPostsPage() {
 
         <div className="px-4 py-3 border-t border-slate-800 flex items-center justify-between">
           <div className="text-xs text-slate-400">
-            ملاحظة: لم نفعل الحذف/الإخفاء الآن لتجنب كسر RLS.
+            ملاحظة: الحذف يتم عبر API موجود مسبقًا (/api/posts/[id]/delete) بدون
+            تعديل على سياسات RLS.
           </div>
 
           <button
