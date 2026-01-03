@@ -10,12 +10,10 @@ function getEnv(name: string) {
   return v;
 }
 
-// نخلي النوع any عشان نرتاح من مشاكل الأنواع في الإنتاج
+// نستخدم any عشان ما ندخل في تعقيد أنواع Supabase في بيئة الإنتاج
 async function getUserIdFromBearer(anon: any, req: Request) {
   const auth = req.headers.get("authorization") || "";
-  const token = auth.toLowerCase().startsWith("bearer ")
-    ? auth.slice(7)
-    : null;
+  const token = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7) : null;
 
   if (!token) return null;
 
@@ -24,7 +22,6 @@ async function getUserIdFromBearer(anon: any, req: Request) {
   return data?.user?.id ?? null;
 }
 
-// برضه any لنفس السبب
 async function isAdmin(admin: any, uid: string) {
   try {
     const { data, error } = await admin.rpc("is_admin", { p_uid: uid } as any);
