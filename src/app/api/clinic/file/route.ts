@@ -20,8 +20,9 @@ async function getUserIdFromBearer(anon: ReturnType<typeof createClient>, req: R
   return data.user?.id ?? null;
 }
 
-async function isAdmin(admin: ReturnType<typeof createClient>, uid: string) {
-  const { data, error } = await admin.rpc("is_admin", { p_uid: uid });
+// ✅ تخفيف التايب هنا فقط حتى لا يعترض TypeScript على rpc مع p_uid
+async function isAdmin(admin: any, uid: string) {
+  const { data, error } = await (admin as any).rpc("is_admin", { p_uid: uid } as any);
   if (error) return false;
   return !!data;
 }
@@ -52,7 +53,9 @@ export async function POST(req: Request) {
 
     // نستنتج consultationId من أول جزء من المسار
     const consultationId = path.split("/")[0] || "";
-    if (!consultationId) return NextResponse.json({ ok: false, error: "invalid path" }, { status: 400 });
+    if (!consultationId) {
+      return NextResponse.json({ ok: false, error: "invalid path" }, { status: 400 });
+    }
 
     // تحقق صلاحية الوصول عبر consultation_queue
     const { data: qrow, error: qerr } = await supabaseAdmin
@@ -62,11 +65,15 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     if (qerr) throw qerr;
-    if (!qrow) return NextResponse.json({ ok: false, error: "consultation not found" }, { status: 404 });
+    if (!qrow) {
+      return NextResponse.json({ ok: false, error: "consultation not found" }, { status: 404 });
+    }
 
     const adminOk = await isAdmin(supabaseAdmin, uid);
     const ok = adminOk || uid === qrow.doctor_id || uid === qrow.patient_id;
-    if (!ok) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+    if (!ok) {
+      return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+    }
 
     const { data, error } = await supabaseAdmin.storage.from(bucket).createSignedUrl(path, expiresIn);
     if (error) throw error;
