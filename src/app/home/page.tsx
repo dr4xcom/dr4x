@@ -373,8 +373,7 @@ function RightPanelMock() {
       <div className="dr4x-card p-4">
         <div className="font-semibold mb-2">ماذا تقدم DR4X؟</div>
         <p className="text-sm text-slate-600">
-          منصة طبية مستوحاة من تويتر لكنها مخصصة للاستشارات الطبية ومتابعة
-          المرضى.
+          منصة طبية مخصصة للاستشارات الطبية ومتابعة .
         </p>
       </div>
 
