@@ -9,6 +9,7 @@ type PostRow = {
   author_id?: string | null;
   content?: string | null;
   created_at?: string | null;
+  pinned_at?: string | null; // ✅ جديد: حالة التثبيت
 };
 
 type ProfileRow = {
@@ -28,7 +29,9 @@ export default function AdminPostsPage() {
   const [err, setErr] = useState<string | null>(null);
 
   const [posts, setPosts] = useState<PostRow[]>([]);
-  const [profilesMap, setProfilesMap] = useState<Record<string, ProfileRow>>({});
+  const [profilesMap, setProfilesMap] = useState<Record<string, ProfileRow>>(
+    {}
+  );
 
   const [q, setQ] = useState("");
 
@@ -46,10 +49,10 @@ export default function AdminPostsPage() {
         const from = page * PAGE_SIZE;
         const to = from + PAGE_SIZE - 1;
 
-        // ✅ مطابق لجدول posts عندك: author_id + content + created_at
+        // ✅ إضافة pinned_at للاستعلام
         const { data, error } = await supabase
           .from("posts")
-          .select("id,author_id,content,created_at")
+          .select("id,author_id,content,created_at,pinned_at")
           .order("created_at", { ascending: false })
           .range(from, to);
 
@@ -123,9 +126,7 @@ export default function AdminPostsPage() {
   async function handleDeletePost(id: string | number) {
     const pid = String(id);
 
-    const ok = window.confirm(
-      "هل أنت متأكد من حذف هذه التغريدة بشكل نهائي؟"
-    );
+    const ok = window.confirm("هل أنت متأكد من حذف هذه التغريدة بشكل نهائي؟");
     if (!ok) return;
 
     try {
@@ -143,6 +144,46 @@ export default function AdminPostsPage() {
       setPosts((prev) => prev.filter((p) => String(p.id) !== pid));
     } catch (e: any) {
       alert(e?.message ?? "حدث خطأ غير متوقع أثناء الحذف.");
+    }
+  }
+
+  // ✅ جديد: تثبيت / إلغاء تثبيت التغريدة
+  async function handleTogglePin(
+    id: string | number,
+    currentlyPinned: boolean
+  ) {
+    const ok = window.confirm(
+      currentlyPinned
+        ? "إلغاء تثبيت هذه التغريدة من الأعلى؟"
+        : "تثبيت هذه التغريدة في أعلى القائمة؟"
+    );
+    if (!ok) return;
+
+    const pidNum = Number(id);
+    const newPinnedAt = currentlyPinned ? null : new Date().toISOString();
+
+    try {
+      const { error } = await supabase
+        .from("posts")
+        .update({ pinned_at: newPinnedAt })
+        .eq("id", pidNum);
+
+      if (error) {
+        alert(
+          `فشل تغيير حالة التثبيت:\n${error.message}\n` +
+            "تأكد أن سياسات RLS تسمح للمدير بتعديل posts."
+        );
+        return;
+      }
+
+      // تحديث الحالة في الواجهة
+      setPosts((prev) =>
+        prev.map((p) =>
+          String(p.id) === String(id) ? { ...p, pinned_at: newPinnedAt } : p
+        )
+      );
+    } catch (e: any) {
+      alert(e?.message ?? "حدث خطأ غير متوقع أثناء التثبيت.");
     }
   }
 
@@ -190,6 +231,7 @@ export default function AdminPostsPage() {
         <div className="divide-y divide-slate-800">
           {filtered.map((p) => {
             const prof = p.author_id ? profilesMap[p.author_id] : null;
+            const isPinned = !!p.pinned_at;
 
             return (
               <div key={String(p.id)} className="p-4">
@@ -199,6 +241,11 @@ export default function AdminPostsPage() {
                       <div className="text-sm font-extrabold">
                         Post #{String(p.id)}
                       </div>
+                      {isPinned && (
+                        <span className="text-[11px] px-2 py-0.5 rounded-full border border-emerald-500 text-emerald-300">
+                          مثبّت
+                        </span>
+                      )}
                       <span className="text-xs text-slate-500 truncate">
                         by: {safeText(p.author_id)}
                       </span>
@@ -237,6 +284,14 @@ export default function AdminPostsPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-2 justify-start lg:justify-end">
+                    <button
+                      type="button"
+                      onClick={() => handleTogglePin(p.id, isPinned)}
+                      className="rounded-xl border border-emerald-600 bg-emerald-900/20 px-3 py-2 text-sm font-semibold text-emerald-200 hover:bg-emerald-900/40 hover:border-emerald-400 transition"
+                    >
+                      {isPinned ? "إلغاء التثبيت" : "تثبيت في الأعلى"}
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => handleDeletePost(p.id)}

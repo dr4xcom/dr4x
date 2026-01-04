@@ -120,9 +120,7 @@ export default function PostsFeed() {
       setPosts([]);
       setProfilesById({});
       setLoading(false);
-      setErrorMsg(
-        `حدث خطأ أثناء تحميل المنشورات: ${postsError.message ?? ""}`
-      );
+      setErrorMsg(`حدث خطأ أثناء تحميل المنشورات: ${postsError.message ?? ""}`);
       return;
     }
 
@@ -591,10 +589,7 @@ export default function PostsFeed() {
     const ok = confirm("هل تريد حذف الرد؟");
     if (!ok) return;
 
-    const { error } = await supabase
-      .from("replies")
-      .delete()
-      .eq("id", replyId);
+    const { error } = await supabase.from("replies").delete().eq("id", replyId);
     if (error) return alert(error.message);
 
     setRepliesByPostId((prev) => {
@@ -658,9 +653,7 @@ export default function PostsFeed() {
     // تحديث الحالة محليًا حتى يظهر التثبيت فورًا
     setPosts((prev) =>
       prev.map((p) =>
-        p.id === postId
-          ? ({ ...p, pinned_at: newPinnedAt } as any)
-          : p
+        p.id === postId ? ({ ...p, pinned_at: newPinnedAt } as any) : p
       )
     );
   }
@@ -678,9 +671,7 @@ export default function PostsFeed() {
       {loading ? (
         <div className="text-sm text-slate-600">جاري تحميل المنشورات...</div>
       ) : null}
-      {errorMsg ? (
-        <div className="text-sm text-red-600">{errorMsg}</div>
-      ) : null}
+      {errorMsg ? <div className="text-sm text-red-600">{errorMsg}</div> : null}
 
       {emptyState ? (
         <div className="text-sm text-slate-600">
