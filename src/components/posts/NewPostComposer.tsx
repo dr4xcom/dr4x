@@ -21,12 +21,14 @@ const QUICK_EMOJIS = [
   "✨",
   "🥹",
 ];
+const AVATAR_BUCKET = "avatars";
 
 type ProfileMini = {
   id?: string;
   full_name: string | null;
   username: string | null;
   avatar_url: string | null;
+  avatar_path?: string | null;
 };
 
 function makeSafeFilename(name: string) {
@@ -40,21 +42,18 @@ function isUrlLike(s: string) {
 }
 
 /* =========================
-   ✅ إضافة للمعاينة فقط
+   معاينة يوتيوب فقط
    ========================= */
 function extractYouTubeId(url: string): string | null {
   const u = (url || "").trim();
   if (!u) return null;
 
-  // youtu.be/<id>
   const m1 = u.match(/youtu\.be\/([^?&/]+)/i);
   if (m1?.[1]) return m1[1];
 
-  // youtube.com/watch?v=<id>
   const m2 = u.match(/[?&]v=([^?&/]+)/i);
   if (m2?.[1]) return m2[1];
 
-  // youtube.com/shorts/<id>
   const m3 = u.match(/youtube\.com\/shorts\/([^?&/]+)/i);
   if (m3?.[1]) return m3[1];
 
@@ -66,8 +65,9 @@ export default function NewPostComposer({
 }: {
   onPosted?: () => void;
 }) {
-  // ✅ الأفاتار فقط
+  // ✅ بيانات البروفايل + الأفاتار
   const [profile, setProfile] = useState<ProfileMini | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState("");
 
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
@@ -80,7 +80,7 @@ export default function NewPostComposer({
   // ✅ ايموجي
   const [showEmoji, setShowEmoji] = useState(false);
 
-  // ✅ رابط فيديو (يُضبط من أيقونة الفيديو فقط)
+  // ✅ رابط فيديو (من أيقونة الفيديو فقط)
   const [videoUrl, setVideoUrl] = useState("");
 
   useEffect(() => {
@@ -95,7 +95,7 @@ export default function NewPostComposer({
 
       const { data: prof } = await supabase
         .from("profiles")
-        .select("id, full_name, username, avatar_url")
+        .select("id, full_name, username, avatar_url, avatar_path")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -108,9 +108,63 @@ export default function NewPostComposer({
     };
   }, []);
 
-  // ✅ توحيد منطق الاسم والاختصار مع PostCard
-  const displayName = useMemo(() => getDisplayName(profile as any), [profile]);
+  // ✅ تحميل صورة الأفاتار بنفس منطق PostCard
+  useEffect(() => {
+    let alive = true;
 
+    (async () => {
+      try {
+        const p: any = profile ?? {};
+        const raw =
+          (p.avatar_path as string | null) ??
+          (p.avatar_url as string | null) ??
+          "";
+
+        const v = (raw || "").trim();
+        if (!v) {
+          if (alive) setAvatarUrl("");
+          return;
+        }
+
+        // لو رابط جاهز (خارجي أو يبدأ بـ /)
+        if (
+          v.startsWith("http://") ||
+          v.startsWith("https://") ||
+          v.startsWith("/")
+        ) {
+          if (alive) setAvatarUrl(v);
+          return;
+        }
+
+        // مسار داخل bucket avatars
+        const { data, error } = await supabase.storage
+          .from(AVATAR_BUCKET)
+          .createSignedUrl(v, 60 * 60);
+
+        if (error) {
+          console.error("NewPostComposer avatar signedUrl error", error);
+          if (alive) setAvatarUrl("");
+          return;
+        }
+
+        const url = data?.signedUrl ?? "";
+        if (!alive) return;
+        setAvatarUrl(
+          url ? `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}` : ""
+        );
+      } catch (e) {
+        console.error("NewPostComposer avatar load error", e);
+        if (alive) setAvatarUrl("");
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [profile]);
+
+  // ✅ توحيد الاسم والاختصار
+  const displayName = useMemo(() => getDisplayName(profile as any), [profile]);
   const initials = useMemo(() => getInitials(displayName), [displayName]);
 
   const canPost = useMemo(() => {
@@ -244,7 +298,7 @@ export default function NewPostComposer({
   }
 
   /* =========================
-     ✅ (جديد) قيم المعاينة فقط
+     معاينة يوتيوب فقط
      ========================= */
   const youtubeId = useMemo(() => {
     const u = videoUrl.trim();
@@ -259,15 +313,14 @@ export default function NewPostComposer({
   return (
     <div className="dr4x-card p-4 mb-3">
       <div className="flex items-start gap-3">
-        {/* ✅ أفاتار على اليمين */}
+        {/* ✅ أفاتار على اليمين (نفس منطق PostCard) */}
         <div className="shrink-0">
-          {profile?.avatar_url ? (
+          {avatarUrl ? (
             <div className="h-10 w-10 rounded-full overflow-hidden border border-slate-200 bg-white">
-              <Image
-                src={profile.avatar_url}
-                alt="avatar"
-                width={40}
-                height={40}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={avatarUrl}
+                alt={displayName}
                 className="h-full w-full object-cover"
               />
             </div>
@@ -292,7 +345,7 @@ export default function NewPostComposer({
         </div>
       </div>
 
-      {/* ✅ معاينة الصور (ثابتة 160×90 بدون تمدد) */}
+      {/* ✅ معاينة الصور */}
       {previewImages.length > 0 ? (
         <div className="mt-3 flex flex-wrap gap-2">
           {previewImages.map((src, idx) => (
@@ -319,7 +372,7 @@ export default function NewPostComposer({
         </div>
       ) : null}
 
-      {/* ✅ (تحديث فقط للمعاينة) معاينة YouTube بدل سطر الرابط */}
+      {/* ✅ معاينة YouTube */}
       {youtubeId ? (
         <div className="mt-3 rounded-2xl overflow-hidden border border-slate-200 bg-black">
           <div className="relative w-full aspect-video">
@@ -332,7 +385,6 @@ export default function NewPostComposer({
             />
           </div>
 
-          {/* زر مسح الرابط (نفس وظيفة X السابقة) */}
           <div className="flex items-center gap-2 p-2 bg-black/60 text-white text-xs">
             <Video className="h-4 w-4" />
             <span className="truncate">{videoUrl}</span>
@@ -347,7 +399,6 @@ export default function NewPostComposer({
           </div>
         </div>
       ) : isUrlLike(videoUrl) ? (
-        // لو الرابط ليس يوتيوب: نخليه مثل ما كان (سطر + X)
         <div className="mt-3 flex items-center gap-2 text-xs text-slate-600">
           <Video className="h-4 w-4" />
           <span className="truncate">{videoUrl}</span>
@@ -395,7 +446,6 @@ export default function NewPostComposer({
             <ImageIcon className="h-5 w-5" />
           </button>
 
-          {/* ✅ أيقونة فيديو (بدل خانة الإدخال) */}
           <button
             type="button"
             onClick={promptVideoUrl}
