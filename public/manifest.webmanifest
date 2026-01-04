@@ -1,11 +1,14 @@
 {
-  "name": "DR4X Clinic",
+  "name": "DR4X",
   "short_name": "DR4X",
-  "start_url": "/",
+  "description": "Healthcare Social Platform",
+  "start_url": "/home",
+  "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
   "background_color": "#020617",
-  "theme_color": "#10b981",
+  "theme_color": "#020617",
+  "dir": "rtl",
+  "lang": "ar",
   "icons": [
     {
       "src": "/icons/icon-192.png",
