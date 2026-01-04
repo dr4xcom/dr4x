@@ -1,3 +1,4 @@
+// src/components/posts/NewPostComposer.tsx
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -5,9 +6,24 @@ import { supabase } from "@/utils/supabase/client";
 import { Image as ImageIcon, Link2, Video, X, Smile } from "lucide-react";
 import Image from "next/image";
 
-const QUICK_EMOJIS = ["😀", "😍", "😂", "🔥", "👍", "🙏", "💙", "✅", "✨", "🥹"];
+// ✅ نفس الأدوات المستخدمة في PostCard
+import { getDisplayName, getInitials } from "@/lib/postsFeed/utils";
+
+const QUICK_EMOJIS = [
+  "😀",
+  "😍",
+  "😂",
+  "🔥",
+  "👍",
+  "🙏",
+  "💙",
+  "✅",
+  "✨",
+  "🥹",
+];
 
 type ProfileMini = {
+  id?: string;
   full_name: string | null;
   username: string | null;
   avatar_url: string | null;
@@ -45,7 +61,11 @@ function extractYouTubeId(url: string): string | null {
   return null;
 }
 
-export default function NewPostComposer({ onPosted }: { onPosted?: () => void }) {
+export default function NewPostComposer({
+  onPosted,
+}: {
+  onPosted?: () => void;
+}) {
   // ✅ الأفاتار فقط
   const [profile, setProfile] = useState<ProfileMini | null>(null);
 
@@ -75,7 +95,7 @@ export default function NewPostComposer({ onPosted }: { onPosted?: () => void })
 
       const { data: prof } = await supabase
         .from("profiles")
-        .select("full_name, username, avatar_url")
+        .select("id, full_name, username, avatar_url")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -88,10 +108,10 @@ export default function NewPostComposer({ onPosted }: { onPosted?: () => void })
     };
   }, []);
 
-  const initials = useMemo(() => {
-    const base = profile?.full_name?.trim() || profile?.username?.trim() || "DR";
-    return ((base[0] ?? "D") + (base[1] ?? "R")).toUpperCase();
-  }, [profile]);
+  // ✅ توحيد منطق الاسم والاختصار مع PostCard
+  const displayName = useMemo(() => getDisplayName(profile as any), [profile]);
+
+  const initials = useMemo(() => getInitials(displayName), [displayName]);
 
   const canPost = useMemo(() => {
     const hasText = content.trim().length > 0;
@@ -136,11 +156,13 @@ export default function NewPostComposer({ onPosted }: { onPosted?: () => void })
       const safe = makeSafeFilename(f.name || "image");
       const path = `${userId}/posts/${Date.now()}_${safe}`;
 
-      const { error: upErr } = await supabase.storage.from("post_media").upload(path, f, {
-        cacheControl: "3600",
-        upsert: false,
-        contentType: f.type || undefined,
-      });
+      const { error: upErr } = await supabase.storage
+        .from("post_media")
+        .upload(path, f, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: f.type || undefined,
+        });
 
       if (upErr) throw new Error(upErr.message);
 
@@ -228,7 +250,8 @@ export default function NewPostComposer({ onPosted }: { onPosted?: () => void })
     const u = videoUrl.trim();
     if (!u) return null;
     const lower = u.toLowerCase();
-    const isYouTube = lower.includes("youtube.com") || lower.includes("youtu.be");
+    const isYouTube =
+      lower.includes("youtube.com") || lower.includes("youtu.be");
     if (!isYouTube) return null;
     return extractYouTubeId(u);
   }, [videoUrl]);
@@ -256,7 +279,9 @@ export default function NewPostComposer({ onPosted }: { onPosted?: () => void })
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold text-slate-900 mb-2">ماذا يحدث؟</div>
+          <div className="text-sm font-semibold text-slate-900 mb-2">
+            ماذا يحدث؟
+          </div>
 
           <textarea
             value={content}
@@ -276,7 +301,11 @@ export default function NewPostComposer({ onPosted }: { onPosted?: () => void })
               className="relative w-[160px] h-[90px] rounded-xl overflow-hidden bg-slate-100"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={src} alt="preview" className="w-full h-full object-cover" />
+              <img
+                src={src}
+                alt="preview"
+                className="w-full h-full object-cover"
+              />
               <button
                 type="button"
                 onClick={() => removeImage(idx)}
