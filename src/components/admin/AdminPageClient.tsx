@@ -45,9 +45,12 @@ export default function AdminPageClient() {
         setEmail(user.email ?? null);
 
         // ✅ تحقق الأدمن عبر RPC
-        const { data: adminOk, error: adminErr } = await supabase.rpc("is_admin", {
-          p_uid: user.id,
-        });
+        const { data: adminOk, error: adminErr } = await supabase.rpc(
+          "is_admin",
+          {
+            p_uid: user.id,
+          }
+        );
 
         if (adminErr) throw adminErr;
 

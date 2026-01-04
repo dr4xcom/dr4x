@@ -4,10 +4,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
-import {
-  getSystemSettingNumber,
-  getSystemSettingString,
-} from "@/utils/systemSettings";
 import { Video, UserCircle2 } from "lucide-react";
 import ConsultationChat from "@/components/clinic/ConsultationChat";
 
@@ -58,6 +54,66 @@ function inferLabel(row: any): string {
   return "غير معرّف";
 }
 
+/* ============== قراءة إعدادات العيادة من جدول system_settings مباشرة ============== */
+
+type SystemSettingRow = {
+  key: string | null;
+  value: string | null;
+  value_number: number | null;
+};
+
+async function loadClinicSettingsFromDb(): Promise<ClinicSettings> {
+  const fallback: ClinicSettings = {
+    emergencyHours: "طوارئ 24 ساعة",
+    emergencyPrice: null,
+    deptDefaultHours: "من 4:00 م إلى 10:00 م",
+    deptDefaultPrice: null,
+  };
+
+  const { data, error } = await supabase
+    .from("system_settings")
+    .select("key, value, value_number");
+
+  if (error || !Array.isArray(data)) {
+    return fallback;
+  }
+
+  const rows = data as SystemSettingRow[];
+
+  const findRow = (k: string) =>
+    rows.find((r) => (r.key || "").trim() === k) || null;
+
+  const getString = (k: string, fb: string): string => {
+    const row = findRow(k);
+    const v = row?.value ?? null;
+    return typeof v === "string" && v.trim().length > 0 ? v.trim() : fb;
+  };
+
+  const getNumber = (k: string): number | null => {
+    const row = findRow(k);
+    if (!row) return null;
+
+    if (typeof row.value_number === "number") return row.value_number;
+
+    if (typeof row.value === "string") {
+      const n = Number(row.value);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    return null;
+  };
+
+  return {
+    emergencyHours: getString("clinic_emergency_hours", fallback.emergencyHours),
+    emergencyPrice: getNumber("clinic_emergency_price"),
+    deptDefaultHours: getString(
+      "clinic_dept_default_hours",
+      fallback.deptDefaultHours
+    ),
+    deptDefaultPrice: getNumber("clinic_dept_default_price"),
+  };
+}
+
 /* ====================== صفحة اختيار القسم (بدون بارامترات) ====================== */
 
 function CategoryLandingPage() {
@@ -82,24 +138,10 @@ function CategoryLandingPage() {
         setErr(null);
         setLoading(true);
 
-        const [eHours, ePrice, dHours, dPrice] = await Promise.all([
-          getSystemSettingString("clinic_emergency_hours", "طوارئ 24 ساعة"),
-          getSystemSettingNumber("clinic_emergency_price"),
-          getSystemSettingString(
-            "clinic_dept_default_hours",
-            "من 4:00 م إلى 10:00 م"
-          ),
-          getSystemSettingNumber("clinic_dept_default_price"),
-        ]);
-
+        // ✅ نقرأ إعدادات العيادة من جدول system_settings
+        const loaded = await loadClinicSettingsFromDb();
         if (!alive) return;
-
-        setSettings({
-          emergencyHours: (eHours || "طوارئ 24 ساعة").trim(),
-          emergencyPrice: ePrice,
-          deptDefaultHours: (dHours || "من 4:00 م إلى 10:00 م").trim(),
-          deptDefaultPrice: dPrice,
-        });
+        setSettings(loaded);
 
         const { data, error } = await supabase.from("departments").select("*");
 
@@ -109,10 +151,10 @@ function CategoryLandingPage() {
         } else if (data && data.length > 0) {
           const mapped: Department[] = (data as any[]).map((row) => {
             const name =
+              (row.name_ar as string) || // ✅ يطابق جدولك
+              (row.name_en as string) ||
               (row.name as string) ||
               (row.title as string) ||
-              (row.ar_name as string) ||
-              (row.en_name as string) ||
               (row.slug as string) ||
               "قسم طبي";
             return {
@@ -152,7 +194,7 @@ function CategoryLandingPage() {
     <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center py-6 px-3">
       <div className="relative w-full max-w-6xl rounded-[32px] border border-pink-500/70 bg-slate-950 shadow-[0_0_45px_rgba(236,72,153,0.35)] overflow-hidden">
         {/* شريط علوي */}
-        <div className="flex items-center justify_between gap-3 border-b border-slate-800 bg-slate-900/60 px-4 sm:px-8 py-3">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-800 bg-slate-900/60 px-4 sm:px-8 py-3">
           <button
             type="button"
             onClick={() => router.push("/home")}
@@ -176,7 +218,7 @@ function CategoryLandingPage() {
           <button
             type="button"
             onClick={() => router.push("/home")}
-            className="flex items_center gap-2 cursor-pointer"
+            className="flex items-center gap-2 cursor-pointer"
           >
             <div className="h-10 w-10 rounded-full bg-slate-900 border border-pink-500/60 grid place-items-center text-xs font-extrabold">
               DR4X

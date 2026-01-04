@@ -186,7 +186,9 @@ export default function PostCard({
         if (!alive) return;
 
         setAvatarUrl(
-          url ? `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}` : ""
+          url
+            ? `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`
+            : ""
         );
       } catch (e) {
         console.error("PostCard avatar load error", e);
@@ -414,11 +416,7 @@ export default function PostCard({
               title="عرض الصورة"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={src}
-                alt="post"
-                className="w-full h-full object-cover"
-              />
+              <img src={src} alt="post" className="w-full h-full object-cover" />
             </button>
           ))}
         </div>
@@ -502,7 +500,9 @@ export default function PostCard({
           {retweetCount > 0 ? (
             <span className="text-xs text-slate-500">({retweetCount})</span>
           ) : null}
-          {retweeted ? <span className="text-xs text-slate-500">✓</span> : null}
+          {retweeted ? (
+            <span className="text-xs text-slate-500">✓</span>
+          ) : null}
         </button>
 
         <button

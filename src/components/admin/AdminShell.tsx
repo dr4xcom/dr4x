@@ -13,6 +13,8 @@ const NAV = [
   { href: "/admin/patients", label: "المرضى" },
   { href: "/admin/consultations", label: "الاستشارات" },
   { href: "/admin/departments", label: "الأقسام" },
+  // ✅ الزر الجديد تحت الأقسام مباشرة
+  { href: "/admin/clinic-settings", label: "إعدادات العيادة" },
   { href: "/admin/specialties", label: "التخصصات" },
   { href: "/admin/posts", label: "التغريدات" },
   { href: "/admin/library", label: "المكتبة" },

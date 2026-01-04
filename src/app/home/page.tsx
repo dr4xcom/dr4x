@@ -2,7 +2,7 @@
 "use client";
 
 import AppShell from "@/components/layout/AppShell";
-import { Home, Search, Stethoscope, Mail, Bell } from "lucide-react";
+import { Home, Search, Stethoscope, Mail, Bell, BookOpen } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
@@ -222,7 +222,6 @@ function SidebarMock({ onOpenComposer }: { onOpenComposer: () => void }) {
       router.push("/profile");
       return;
     }
-    // ✅ إصلاح: استخدام backticks مع /u/
     router.push(`/u/${encodeURIComponent(u)}`);
   }
 
@@ -244,6 +243,13 @@ function SidebarMock({ onOpenComposer }: { onOpenComposer: () => void }) {
       <SidebarButton
         icon={<Stethoscope className="h-5 w-5" />}
         label="الأطباء"
+      />
+
+      {/* ✅ زر المكتبة جنب بقية الأزرار بدون تغيير أي تصميم آخر */}
+      <SidebarButton
+        icon={<BookOpen className="h-5 w-5" />}
+        label="المكتبة"
+        onClick={() => router.push("/library")}
       />
 
       <SidebarButton
