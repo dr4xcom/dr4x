@@ -7,8 +7,17 @@ html,
 body {
   margin: 0;
   padding: 0;
+  width: 100%;
+  max-width: 100%;
   overflow-x: hidden; /* يمنع التمرير الجانبي */
-  overflow-y: auto; /* يسمح بالتمرير العمودي في كل الصفحات */
+  overflow-y: auto;   /* يسمح بالتمرير العمودي في كل الصفحات */
+}
+
+/* الصور والفيديو تتكيّف مع عرض الشاشة في الجوال */
+img,
+video {
+  max-width: 100%;
+  height: auto;
 }
 
 /* =========================
@@ -79,6 +88,20 @@ html[dir="ltr"] body {
   display: grid;
   grid-template-columns: 1fr;
   gap: 1rem;
+}
+
+/* تحسين العرض على الجوال */
+@media (max-width: 767px) {
+  .dr4x-shell {
+    padding-inline: 0.75rem; /* هوامش بسيطة يمين ويسار */
+  }
+
+  .dr4x-col-sidebar,
+  .dr4x-col-feed,
+  .dr4x-col-panel {
+    width: 100%;
+    max-width: 100%;
+  }
 }
 
 /* Desktop sizes like Twitter */
