@@ -1,6 +1,17 @@
 @import "tailwindcss";
 
 /* =========================
+   HTML / BODY RESET (مهم للجوال)
+   ========================= */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden; /* يمنع التمرير الجانبي */
+  overflow-y: auto; /* يسمح بالتمرير العمودي في كل الصفحات */
+}
+
+/* =========================
    Root Theme Variables
    ========================= */
 :root {
@@ -107,6 +118,7 @@ html[dir="ltr"] body {
     flex-direction: row;
   }
 }
+
 /* إخفاء شريط التمرير (Scrollbar) داخل العمود الأوسط فقط */
 .dr4x-no-scrollbar {
   scrollbar-width: none; /* Firefox */
