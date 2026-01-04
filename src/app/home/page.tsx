@@ -11,6 +11,8 @@ import PostComposerModal from "@/components/posts/PostComposerModal";
 import NewPostComposer from "@/components/posts/NewPostComposer";
 import HomeLibraryWidget from "@/components/library/HomeLibraryWidget";
 
+const AVATAR_BUCKET = "avatars";
+
 /* ========================= Sidebar Button ========================= */
 function SidebarButton({
   icon,
@@ -55,6 +57,8 @@ type ProfileLite = {
   full_name: string | null;
   username: string | null;
   email: string | null;
+  avatar_url: string | null;
+  avatar_path: string | null;
 };
 
 /* ========================= Sidebar ========================= */
@@ -66,7 +70,10 @@ function SidebarMock({ onOpenComposer }: { onOpenComposer: () => void }) {
     full_name: null,
     username: null,
     email: null,
+    avatar_url: null,
+    avatar_path: null,
   });
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [dmUnread, setDmUnread] = useState(0);
   const [notifUnread, setNotifUnread] = useState(0);
@@ -92,17 +99,23 @@ function SidebarMock({ onOpenComposer }: { onOpenComposer: () => void }) {
 
         if (!user) {
           // مستخدم غير مسجّل
-          setProfile({ full_name: null, username: null, email: null });
+          setProfile({
+            full_name: null,
+            username: null,
+            email: null,
+            avatar_url: null,
+            avatar_path: null,
+          });
           setDmUnread(0);
           setNotifUnread(0);
           setLoadingProfile(false);
           return;
         }
 
-        // بروفايل مختصر
+        // بروفايل مختصر + مسار الصورة
         const { data, error } = await supabase
           .from("profiles")
-          .select("full_name, username")
+          .select("full_name, username, avatar_url, avatar_path")
           .eq("id", user.id)
           .maybeSingle();
 
@@ -116,6 +129,8 @@ function SidebarMock({ onOpenComposer }: { onOpenComposer: () => void }) {
           full_name: data?.full_name ?? null,
           username: data?.username ?? null,
           email: user.email ?? null,
+          avatar_url: data?.avatar_url ?? null,
+          avatar_path: data?.avatar_path ?? null,
         });
 
         // عدد الرسائل والتنبيهات غير المقروءة
@@ -157,6 +172,56 @@ function SidebarMock({ onOpenComposer }: { onOpenComposer: () => void }) {
       mounted = false;
     };
   }, []);
+
+  // ✅ تحميل صورة الأفاتار (نفس منطق PostCard/NewPostComposer)
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      try {
+        const raw =
+          (profile.avatar_path ?? "") || (profile.avatar_url ?? "") || "";
+
+        const v = raw.trim();
+        if (!v) {
+          if (alive) setAvatarUrl("");
+          return;
+        }
+
+        if (
+          v.startsWith("http://") ||
+          v.startsWith("https://") ||
+          v.startsWith("/")
+        ) {
+          if (alive) setAvatarUrl(v);
+          return;
+        }
+
+        const { data, error } = await supabase.storage
+          .from(AVATAR_BUCKET)
+          .createSignedUrl(v, 60 * 60);
+
+        if (error) {
+          console.error("Sidebar avatar signedUrl error", error);
+          if (alive) setAvatarUrl("");
+          return;
+        }
+
+        const url = data?.signedUrl ?? "";
+        if (!alive) return;
+        setAvatarUrl(
+          url ? `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}` : ""
+        );
+      } catch (e) {
+        console.error("Sidebar avatar load error", e);
+        if (alive) setAvatarUrl("");
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [profile.avatar_path, profile.avatar_url]);
 
   // إغلاق المنيو عند الضغط خارجها أو زر Escape
   useEffect(() => {
@@ -217,7 +282,6 @@ function SidebarMock({ onOpenComposer }: { onOpenComposer: () => void }) {
       router.push("/profile");
       return;
     }
-    // ✅ هنا كان الخطأ — تم إصلاحه بوضع /u/ داخل Backticks
     router.push(`/u/${encodeURIComponent(u)}`);
   }
 
@@ -233,7 +297,7 @@ function SidebarMock({ onOpenComposer }: { onOpenComposer: () => void }) {
       <SidebarButton
         icon={<Search className="h-5 w-5" />}
         label="التخصصات"
-        onClick={() => router.push("/category")} // ⬅️ الزر الجديد
+        onClick={() => router.push("/category")}
       />
 
       <SidebarButton
@@ -265,9 +329,22 @@ function SidebarMock({ onOpenComposer }: { onOpenComposer: () => void }) {
 
         <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl px-2 py-2 hover:bg-slate-50 transition">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="h-10 w-10 rounded-full bg-slate-900 text-white grid place-items-center text-sm font-bold">
-              {loadingProfile ? "••" : initials}
-            </div>
+            {/* ✅ هنا أصبحنا نعرض الصورة إن وجدت، وإلا الأحرف السابقة */}
+            {avatarUrl ? (
+              <div className="h-10 w-10 rounded-full overflow-hidden bg-slate-900 text-white">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={avatarUrl}
+                  alt={displayName}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="h-10 w-10 rounded-full bg-slate-900 text-white grid place-items-center text-sm font-bold">
+                {loadingProfile ? "••" : initials}
+              </div>
+            )}
+
             <div className="min-w-0">
               <div className="text-sm font-semibold truncate">
                 {loadingProfile ? "..." : displayName}
@@ -289,7 +366,6 @@ function SidebarMock({ onOpenComposer }: { onOpenComposer: () => void }) {
 
             {menuOpen && (
               <div className="absolute end-0 bottom-full mb-2 w-44 rounded-2xl border bg-white shadow-lg overflow-hidden">
-                {/* ملفي الشخصي -> /u/[username] */}
                 <button
                   type="button"
                   onClick={() => {
@@ -301,7 +377,6 @@ function SidebarMock({ onOpenComposer }: { onOpenComposer: () => void }) {
                   ملفي الشخصي
                 </button>
 
-                {/* لوحة التحكم */}
                 <button
                   type="button"
                   onClick={() => {
@@ -313,7 +388,6 @@ function SidebarMock({ onOpenComposer }: { onOpenComposer: () => void }) {
                   لوحة التحكم
                 </button>
 
-                {/* ملفي الصحي */}
                 <button
                   type="button"
                   onClick={() => {
@@ -403,13 +477,11 @@ export default function HomePage() {
       sidebar={<SidebarMock onOpenComposer={() => setComposerOpen(true)} />}
       header={
         <div className="relative w-full">
-          {/* عنوان "لك" ثابت في مكانه */}
           <div className="pr-[100px] text-slate-900 font-extrabold text-2xl relative inline-block">
             لك
             <span className="absolute left-1/2 -translate-x-1/2 -bottom-3 h-[4px] w-16 rounded-full bg-sky-500" />
           </div>
 
-          {/* زر "متابعون" مع إزاحة مناسبة عن "لك" */}
           <div className="absolute top-1/2 -translate-y-1/2 right-[350px]">
             <button
               type="button"
