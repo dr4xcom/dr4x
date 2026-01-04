@@ -25,6 +25,7 @@ import {
   ReplyRow,
   extractYouTubeId,
   formatTime,
+  // getAvatarUrl,  ✅ لم نعد نحتاجها هنا
   getDisplayName,
   getHandle,
   getInitials,
@@ -39,55 +40,41 @@ export default function PostCard({
   post,
   prof,
   meId,
-
   isOpen,
   replies,
-
   likeCount,
   retweetCount,
   liked,
   retweeted,
   replyCount,
-
   following,
   busyFollow,
-
   menuOpen,
   setMenuOpen,
   shareOpen,
   setShareOpen,
   replyMenuOpen,
   setReplyMenuOpen,
-
   iBookmarked,
-
   toggleReply,
   toggleFollow,
   toggleRetweet,
   toggleLike,
   toggleBookmark,
-
   shareWhatsApp,
   shareEmail,
   copyLink,
-
   editPost,
   deletePost,
-
   editReply,
   deleteReply,
-
   loadReplies,
   onPostedReply,
-
   openLightbox,
-
   profilesById,
   loadingRepliesFor,
   setOpenReplyFor,
-
   onOpenDetails,
-
   mode = "feed",
 }: {
   post: PostRow;
@@ -153,7 +140,7 @@ export default function PostCard({
   const verified = isVerified(prof);
   const initials = getInitials(name);
 
-  // رابط صورة العضو (من Supabase Storage)
+  // ✅ رابط صورة العضو (نفس منطق صفحة البروفايل: نستخدم Supabase Storage)
   const [avatarUrl, setAvatarUrl] = useState("");
 
   useEffect(() => {
@@ -197,10 +184,9 @@ export default function PostCard({
 
         const url = data?.signedUrl ?? "";
         if (!alive) return;
+
         setAvatarUrl(
-          url
-            ? `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`
-            : ""
+          url ? `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}` : ""
         );
       } catch (e) {
         console.error("PostCard avatar load error", e);
@@ -231,10 +217,10 @@ export default function PostCard({
     router.push(`/post/${post.id}`);
   }
 
-  // المشاهدات
+  // ✅ المشاهدات
   const views = Number(post.view_count ?? 0);
 
-  // رابط صفحة المستخدم العامة /u/[username]
+  // ✅ رابط صفحة المستخدم العامة /u/[username]
   const profileUsername = useMemo(() => {
     const u = (prof as any)?.username ? String((prof as any).username) : "";
     if (u) return u;
@@ -347,4 +333,290 @@ export default function PostCard({
               )}
               <span>{following ? "متابَع" : "متابعة"}</span>
             </button>
-          ) : nul
+          ) : null}
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() =>
+                setMenuOpen((prev) => ({ ...prev, [post.id]: !prev[post.id] }))
+              }
+              className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition"
+              title="المزيد"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+
+            {menuOpen[post.id] ? (
+              <div className="absolute z-20 mt-2 left-0 w-44 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+                <button
+                  type="button"
+                  className="w-full inline-flex items-center gap-2 rounded-xl px-2 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  onClick={() => {
+                    setMenuOpen((prev) => ({ ...prev, [post.id]: false }));
+                    if (!isMyPost) return alert("غير مسموح");
+                    void editPost(post.id, post.content);
+                  }}
+                >
+                  <Pencil className="h-4 w-4" />
+                  <span>تعديل</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="w-full inline-flex items-center gap-2 rounded-xl px-2 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  onClick={() => {
+                    setMenuOpen((prev) => ({ ...prev, [post.id]: false }));
+                    if (!isMyPost) return alert("غير مسموح");
+                    void deletePost(post.id);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>حذف</span>
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      {/* ===== المحتوى ===== */}
+      <div className="mt-3">
+        <div
+          className={[
+            "text-sm text-slate-900 break-anywhere leading-relaxed whitespace-pre-wrap",
+            shouldClamp && !expanded ? "line-clamp-5" : "",
+          ].join(" ")}
+        >
+          {contentText ? contentText : ""}
+        </div>
+
+        {showMore ? (
+          <button
+            type="button"
+            onClick={goDetails}
+            className="mt-2 text-sm text-sky-600 hover:text-sky-700 font-semibold"
+          >
+            المزيد
+          </button>
+        ) : null}
+      </div>
+
+      {/* ===== الصور ===== */}
+      {Array.isArray(post.image_paths) && post.image_paths.length > 0 ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {post.image_paths.map((src, idx) => (
+            <button
+              type="button"
+              key={idx}
+              onClick={() => openLightbox(post.image_paths || [], idx)}
+              className="relative w-[160px] h-[90px] rounded-xl overflow-hidden bg-slate-100"
+              title="عرض الصورة"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={src}
+                alt="post"
+                className="w-full h-full object-cover"
+              />
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {/* ===== الفيديو ===== */}
+      {Array.isArray(post.video_urls) && post.video_urls.length > 0 ? (
+        <div className="mt-3 space-y-2">
+          {post.video_urls.map((url, idx) => {
+            const yt = isProbablyYouTube(url) ? extractYouTubeId(url) : null;
+
+            if (yt) {
+              return (
+                <div
+                  key={idx}
+                  className="w-full h-[240px] rounded-xl overflow-hidden bg-black"
+                >
+                  <iframe
+                    className="w-full h-full"
+                    src={`https://www.youtube.com/embed/${yt}`}
+                    allowFullScreen
+                    title={`YouTube ${yt}`}
+                  />
+                </div>
+              );
+            }
+
+            return (
+              <div
+                key={idx}
+                className="w-full rounded-xl overflow-hidden bg-black"
+              >
+                <video
+                  controls
+                  src={url}
+                  className="w-full h-[240px] object-cover"
+                />
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {/* ===== الأزرار ===== */}
+      <div className="mt-3 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => {
+            if (mode === "feed") return goDetails();
+            toggleReply(post.id);
+          }}
+          className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition"
+        >
+          <MessageCircle className="h-4 w-4" />
+          <span>رد</span>
+          {replyCount > 0 ? (
+            <span className="text-xs text-slate-500">({replyCount})</span>
+          ) : null}
+        </button>
+
+        <button
+          type="button"
+          onClick={goDetails}
+          className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition"
+          title="اقرأ الردود"
+        >
+          <BookOpen className="h-4 w-4" />
+          {replyCount > 0 ? (
+            <span className="text-xs text-slate-500">({replyCount})</span>
+          ) : null}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => toggleRetweet(post.id)}
+          className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition"
+          title="إعادة تغريدة"
+        >
+          <Repeat2 className="h-4 w-4" />
+          <span>إعادة</span>
+          {retweetCount > 0 ? (
+            <span className="text-xs text-slate-500">({retweetCount})</span>
+          ) : null}
+          {retweeted ? <span className="text-xs text-slate-500">✓</span> : null}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => toggleLike(post.id)}
+          className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition"
+          title="إعجاب"
+        >
+          <Heart className="h-4 w-4" />
+          <span>إعجاب</span>
+          {likeCount > 0 ? (
+            <span className="text-xs text-slate-500">({likeCount})</span>
+          ) : null}
+          {liked ? <span className="text-xs text-slate-500">✓</span> : null}
+        </button>
+
+        <div className="inline-flex items-center gap-3 text-sm text-slate-600">
+          <button
+            type="button"
+            onClick={() => toggleBookmark(post.id)}
+            className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition"
+            title="حفظ"
+          >
+            <Bookmark className="h-4 w-4" />
+            {iBookmarked[post.id] ? (
+              <span className="text-xs text-slate-500">✓</span>
+            ) : null}
+          </button>
+
+          {/* المشاهدات */}
+          <button
+            type="button"
+            onClick={goDetails}
+            className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition"
+            title="المشاهدات"
+          >
+            <span className="text-sm">{views}</span>
+          </button>
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() =>
+                setShareOpen((prev) => ({ ...prev, [post.id]: !prev[post.id] }))
+              }
+              className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition"
+              title="مشاركة"
+            >
+              <Share2 className="h-4 w-4" />
+            </button>
+
+            {shareOpen[post.id] ? (
+              <div className="absolute z-20 mt-2 left-0 w-44 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+                <button
+                  type="button"
+                  className="w-full rounded-xl px-2 py-2 text-sm text-slate-700 hover:bg-slate-50 text-right"
+                  onClick={() => {
+                    setShareOpen((prev) => ({ ...prev, [post.id]: false }));
+                    shareWhatsApp(post.id);
+                  }}
+                >
+                  واتساب
+                </button>
+
+                <button
+                  type="button"
+                  className="w-full rounded-xl px-2 py-2 text-sm text-slate-700 hover:bg-slate-50 text-right"
+                  onClick={() => {
+                    setShareOpen((prev) => ({ ...prev, [post.id]: false }));
+                    shareEmail(post.id);
+                  }}
+                >
+                  إيميل
+                </button>
+
+                <button
+                  type="button"
+                  className="w-full rounded-xl px-2 py-2 text-sm text-slate-700 hover:bg-slate-50 text-right"
+                  onClick={() => {
+                    setShareOpen((prev) => ({ ...prev, [post.id]: false }));
+                    void copyLink(post.id);
+                  }}
+                >
+                  نسخ الرابط
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      {/* ===== الردود ===== */}
+      {mode === "details" ? (
+        <ReplyList
+          postId={post.id}
+          isOpen={isOpen}
+          replies={replies}
+          profilesById={profilesById}
+          meId={meId}
+          loadingRepliesFor={loadingRepliesFor}
+          replyMenuOpen={replyMenuOpen}
+          setReplyMenuOpen={setReplyMenuOpen}
+          onCancelReply={() => setOpenReplyFor(null)}
+          onAfterPosted={async () => {
+            await onPostedReply(post.id);
+          }}
+          onLoadReplies={loadReplies}
+          onEditReply={(replyId, pid, current) =>
+            editReply(replyId, pid, current)
+          }
+          onDeleteReply={(replyId, pid) => void deleteReply(replyId, pid)}
+          openLightbox={openLightbox}
+        />
+      ) : null}
+    </div>
+  );
+}
