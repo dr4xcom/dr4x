@@ -1,6 +1,6 @@
 // src/app/layout.tsx
 import "./globals.css";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 
 export const metadata: Metadata = {
@@ -11,6 +11,14 @@ export const metadata: Metadata = {
   icons: {
     apple: "/icons/icon-192.png",
   },
+};
+
+// ✅ مهم جداً للجوال: يضبط مقاس الصفحة والتكبير
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
 };
 
 type Locale = "ar" | "en" | "tr";
@@ -37,7 +45,8 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} dir={dir} suppressHydrationWarning>
-      <body className="min-h-dvh bg-slate-50 text-slate-900">
+      {/* ✅ استبدلنا min-h-dvh بـ min-h-screen لأجل الجوال */}
+      <body className="min-h-screen bg-slate-50 text-slate-900">
         {children}
       </body>
     </html>
