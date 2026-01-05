@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
+import InstallPwaButton from "@/components/InstallPwaButton"; // ✅ إضافة واحدة فقط
 
 export default function LoginPage() {
   const router = useRouter();
@@ -76,9 +77,15 @@ export default function LoginPage() {
         <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2 text-center">
           تسجيل الدخول إلى DR4X
         </h1>
+
         <p className="text-sm text-slate-600 mb-6 text-center">
           ادخل باستخدام البريد الإلكتروني أو الاسم المستعار، ثم كلمة المرور.
         </p>
+
+        {/* ✅ زر تثبيت التطبيق – إضافة فقط بدون تغيير الباقي */}
+        <div className="mb-4 flex justify-center">
+          <InstallPwaButton />
+        </div>
 
         {errorMessage && (
           <div className="mb-4 rounded-2xl bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
@@ -127,6 +134,7 @@ export default function LoginPage() {
           <p className="text-xs text-slate-500 mb-3 text-center">
             لا تملك حسابًا على المنصة؟
           </p>
+
           <div className="flex flex-col sm:flex-row gap-3">
             <a
               href="/auth/register/doctors"
@@ -134,6 +142,7 @@ export default function LoginPage() {
             >
               تسجيل طبيب جديد
             </a>
+
             <a
               href="/auth/register/patients"
               className="flex-1 text-center rounded-2xl border border-slate-300 text-slate-700 py-2 text-sm font-semibold hover:bg-slate-50"
