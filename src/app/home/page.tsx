@@ -346,7 +346,7 @@ function SidebarMock({ onOpenComposer }: { onOpenComposer: () => void }) {
                   }}
                   className="w-full text-start px-4 py-3 text-sm hover:bg-slate-50 text-slate-900 font-semibold"
                 >
-                  عيادة الطبيب
+                  خاص للطبيب
                 </button>
 
                 <button

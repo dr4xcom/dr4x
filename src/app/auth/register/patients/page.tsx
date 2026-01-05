@@ -13,7 +13,6 @@ export default function PatientRegisterPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  // Common fields
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [gender, setGender] = useState<"male" | "female">("male");
@@ -21,7 +20,6 @@ export default function PatientRegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // Patient extra
   const [age, setAge] = useState<string>("");
   const [bloodType, setBloodType] = useState<(typeof BLOOD_TYPES)[number] | "">(
     ""
@@ -37,8 +35,8 @@ export default function PatientRegisterPage() {
     if (!password || password.length < 6)
       return "كلمة المرور يجب أن تكون 6 أحرف على الأقل.";
     if (!nationality.trim()) return "اكتب الجنسية.";
-
     if (!age.trim()) return "اكتب العمر.";
+
     const n = Number(age);
     if (!Number.isFinite(n) || n <= 0 || n > 120) return "العمر غير صحيح.";
     if (!bloodType) return "اختر فصيلة الدم.";
@@ -117,209 +115,185 @@ export default function PatientRegisterPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-8">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <div className="text-sm text-slate-500">DR4X</div>
-          <div className="text-2xl font-extrabold text-slate-900">
-            إنشاء حساب مريض
+    <div className="min-h-screen bg-black">
+      <div className="mx-auto w-full max-w-3xl px-4 py-8 min-h-screen bg-black text-emerald-400">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <div className="text-sm text-emerald-500">DR4X</div>
+            <div className="text-2xl font-extrabold text-emerald-400">
+              إنشاء حساب مريض
+            </div>
+            <div className="mt-1 text-xs text-emerald-600">
+              روابط مهمة: <span className="font-mono">/auth/login</span>{" "}
+              <span className="text-emerald-700">|</span>{" "}
+              <span className="font-mono">/auth/register</span>{" "}
+              <span className="text-emerald-700">|</span>{" "}
+              <span className="font-mono">/auth/register/patients</span>
+            </div>
           </div>
-          <div className="mt-1 text-xs text-slate-500">
-            روابط مهمة: <span className="font-mono">/auth/login</span>{" "}
-            <span className="text-slate-300">|</span>{" "}
-            <span className="font-mono">/auth/register</span>{" "}
-            <span className="text-slate-300">|</span>{" "}
-            <span className="font-mono">/auth/register/patients</span>
-          </div>
+
+          <Link
+            href="/auth/login"
+            className="rounded-xl border border-emerald-600 bg-black px-3 py-2 text-sm font-bold text-emerald-300 hover:bg-emerald-900/20"
+          >
+            عندك حساب؟ دخول
+          </Link>
         </div>
 
-        <Link
-          href="/auth/login"
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 hover:bg-slate-50"
-        >
-          عندك حساب؟ دخول
-        </Link>
-      </div>
+        <div className="p-4 rounded-2xl border border-emerald-700 bg-black/70">
+          {err ? (
+            <div className="mb-4 rounded-xl border border-red-500 bg-red-900/40 p-3 text-sm text-red-300">
+              {err}
+            </div>
+          ) : null}
 
-      <div className="dr4x-card p-4">
-        {err ? (
-          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            {err}
-          </div>
-        ) : null}
+          {msg ? (
+            <div className="mb-4 rounded-xl border border-emerald-500 bg-emerald-900/40 p-3 text-sm text-emerald-300">
+              {msg}
+            </div>
+          ) : null}
 
-        {msg ? (
-          <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-            {msg}
-          </div>
-        ) : null}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Field
-            label="الاسم الكامل"
-            value={fullName}
-            onChange={setFullName}
-            placeholder="مثال: محمد أحمد"
-          />
-          <Field
-            label="اسم المستخدم (username)"
-            value={username}
-            onChange={setUsername}
-            placeholder="مثال: dr4x"
-          />
-
-          <Select
-            label="الجنس"
-            value={gender}
-            onChange={(v) => setGender(v as any)}
-            options={[
-              { value: "male", label: "ذكر" },
-              { value: "female", label: "أنثى" },
-            ]}
-          />
-
-          <Field
-            label="الجنسية"
-            value={nationality}
-            onChange={setNationality}
-            placeholder="مثال: سعودي"
-          />
-
-          <Field
-            label="البريد الإلكتروني"
-            value={email}
-            onChange={setEmail}
-            placeholder="name@email.com"
-            type="email"
-          />
-          <Field
-            label="كلمة المرور"
-            value={password}
-            onChange={setPassword}
-            placeholder="••••••••"
-            type="password"
-          />
-        </div>
-
-        <div className="mt-5">
-          <div className="text-sm font-extrabold text-slate-900 mb-2">
-            بيانات المريض
-          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Field
-              label="العمر"
-              value={age}
-              onChange={setAge}
-              placeholder="مثال: 28"
-              type="number"
+              label="الاسم الكامل"
+              value={fullName}
+              onChange={setFullName}
+              placeholder="مثال: محمد أحمد"
             />
+            <Field
+              label="اسم المستخدم (username)"
+              value={username}
+              onChange={setUsername}
+              placeholder="مثال: dr4x"
+            />
+
             <Select
-              label="فصيلة الدم"
-              value={bloodType}
-              onChange={(v) => setBloodType(v as any)}
+              label="الجنس"
+              value={gender}
+              onChange={(v) => setGender(v as any)}
               options={[
-                { value: "", label: "اختر..." },
-                ...BLOOD_TYPES.map((b) => ({ value: b, label: b })),
+                { value: "male", label: "ذكر" },
+                { value: "female", label: "أنثى" },
               ]}
             />
-            <TextArea
-              label="الأمراض المزمنة (اختياري)"
-              value={chronicConditions}
-              onChange={setChronicConditions}
-              placeholder="مثال: سكري، ضغط..."
+
+            <Field
+              label="الجنسية"
+              value={nationality}
+              onChange={setNationality}
+              placeholder="مثال: سعودي"
+            />
+
+            <Field
+              label="البريد الإلكتروني"
+              value={email}
+              onChange={setEmail}
+              placeholder="name@email.com"
+              type="email"
+            />
+
+            <Field
+              label="كلمة المرور"
+              value={password}
+              onChange={setPassword}
+              placeholder="••••••••"
+              type="password"
             />
           </div>
-        </div>
 
-        <button
-          onClick={onSubmit}
-          disabled={loading}
-          className="mt-6 w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-extrabold text-white hover:bg-slate-800 disabled:opacity-60"
-        >
-          {loading ? "جارٍ إنشاء الحساب..." : "إنشاء حساب مريض"}
-        </button>
+          <div className="mt-5">
+            <div className="text-sm font-extrabold text-emerald-300 mb-2">
+              بيانات المريض
+            </div>
 
-        <div className="mt-3 text-xs text-slate-500">
-          بإكمال التسجيل أنت توافق على سياسات الموقع.
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Field
+                label="العمر"
+                value={age}
+                onChange={setAge}
+                placeholder="مثال: 28"
+                type="number"
+              />
+
+              <Select
+                label="فصيلة الدم"
+                value={bloodType}
+                onChange={(v) => setBloodType(v as any)}
+                options={[
+                  { value: "", label: "اختر..." },
+                  ...BLOOD_TYPES.map((b) => ({ value: b, label: b })),
+                ]}
+              />
+
+              <TextArea
+                label="الأمراض المزمنة (اختياري)"
+                value={chronicConditions}
+                onChange={setChronicConditions}
+                placeholder="مثال: سكري، ضغط..."
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={onSubmit}
+            disabled={loading}
+            className="mt-6 w-full rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-extrabold text-black hover:bg-emerald-500 disabled:opacity-60"
+          >
+            {loading ? "جارٍ إنشاء الحساب..." : "إنشاء حساب مريض"}
+          </button>
+
+          <div className="mt-3 text-xs text-emerald-600">
+            بإكمال التسجيل أنت توافق على سياسات الموقع.
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  type?: string;
-}) {
+/* ---------- العناصر المساعدة ---------- */
+
+function Field({ label, value, onChange, placeholder, type = "text" }: any) {
   return (
     <label className="block">
-      <div className="mb-1 text-xs font-bold text-slate-600">{label}</div>
+      <div className="mb-1 text-xs font-bold text-emerald-400">{label}</div>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400"
+        className="w-full rounded-xl border border-emerald-700 bg-black px-3 py-2 text-base text-emerald-200 outline-none focus:border-emerald-400"
       />
     </label>
   );
 }
 
-function TextArea({
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-}) {
+function TextArea({ label, value, onChange, placeholder }: any) {
   return (
     <label className="block md:col-span-2">
-      <div className="mb-1 text-xs font-bold text-slate-600">{label}</div>
+      <div className="mb-1 text-xs font-bold text-emerald-400">{label}</div>
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={3}
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400"
+        className="w-full rounded-xl border border-emerald-700 bg-black px-3 py-2 text-base text-emerald-200 outline-none focus:border-emerald-400"
       />
     </label>
   );
 }
 
-function Select({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-}) {
+function Select({ label, value, onChange, options }: any) {
   return (
     <label className="block">
-      <div className="mb-1 text-xs font-bold text-slate-600">{label}</div>
+      <div className="mb-1 text-xs font-bold text-emerald-400">{label}</div>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400"
+        className="w-full rounded-xl border border-emerald-700 bg-black px-3 py-2 text-base text-emerald-200 outline-none focus:border-emerald-400"
       >
-        {options.map((o) => (
-          <option key={o.value || o.label} value={o.value}>
+        {options.map((o: any) => (
+          <option key={o.value || o.label} value={o.value} className="bg-black">
             {o.label}
           </option>
         ))}
