@@ -1,30 +1,58 @@
 // src/app/api/auth/onboard/route.ts
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 
-function env(name: string) {
+function env(name: string): string {
   const v = process.env[name];
   if (!v) throw new Error(`Missing env: ${name}`);
   return v;
 }
 
-function toInt(v: any) {
+function toInt(v: unknown): number | null {
   if (v === null || v === undefined || v === "") return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
 
-// ✅ هنا التوقيع الجديد: لا يوجد SupabaseClient ولا ReturnType
+type OnboardBody = {
+  uid: string;
+  mode?: "patient" | "doctor";
+  profile?: {
+    username?: string | null;
+    full_name?: string | null;
+    email?: string | null;
+    is_doctor?: boolean | null;
+    whatsapp_number?: string | null;
+  };
+  patient?: {
+    nationality?: string | null;
+    gender?: string | null;
+    blood_type?: string | null;
+    chronic_conditions?: string | null;
+    height_cm?: number | null;
+    weight_kg?: number | null;
+    age?: number | null;
+  };
+  doctor?: {
+    specialty_id?: number | string | null;
+    rank_id?: number | string | null;
+    licence_path?: string | null;
+  };
+};
+
 async function safeUpsert(
-  client: any,
+  client: SupabaseClient,
   table: string,
   payload: Record<string, any>,
   onConflict: string
 ) {
-  const { error } = await client.from(table).upsert(payload as any, { onConflict });
-  if (error) throw new Error(`${table} upsert error: ${error.message}`);
+  const { error } = await client.from(table).upsert(payload, { onConflict });
+  if (error) {
+    console.error(`${table} upsert error:`, error);
+    throw new Error(`${table} upsert error: ${error.message}`);
+  }
 }
 
 export async function POST(req: Request) {
@@ -32,17 +60,21 @@ export async function POST(req: Request) {
     const supabaseUrl = env("NEXT_PUBLIC_SUPABASE_URL");
     const serviceKey = env("SUPABASE_SERVICE_ROLE_KEY");
 
+    // 👇 هذا الكلاينت يستخدم service_role ويتجاوز RLS
     const supabaseAdmin = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    const body = await req.json().catch(() => null);
+    const body = (await req.json().catch(() => null)) as OnboardBody | null;
     if (!body?.uid) {
-      return NextResponse.json({ ok: false, error: "missing uid" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "missing uid" },
+        { status: 400 }
+      );
     }
 
     const uid = String(body.uid);
-    const mode = String(body.mode || "patient");
+    const mode: "patient" | "doctor" = body.mode || "patient";
 
     const profile = body.profile || {};
     const patient = body.patient || {};
@@ -91,7 +123,7 @@ export async function POST(req: Request) {
         "patient_id"
       );
     } else {
-      // doctors
+      // 4) doctors
       await safeUpsert(
         supabaseAdmin,
         "doctors",
@@ -105,8 +137,9 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true }, { status: 200 });
   } catch (e: any) {
+    console.error("onboard error:", e);
     return NextResponse.json(
       { ok: false, error: e?.message ?? "onboard error" },
       { status: 500 }
