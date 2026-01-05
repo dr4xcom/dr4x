@@ -170,7 +170,7 @@ export default function PatientRegisterPage() {
             <Select
               label="الجنس"
               value={gender}
-              onChange={(v) => setGender(v as any)}
+              onChange={(v: "male" | "female") => setGender(v)}
               options={[
                 { value: "male", label: "ذكر" },
                 { value: "female", label: "أنثى" },
@@ -218,7 +218,9 @@ export default function PatientRegisterPage() {
               <Select
                 label="فصيلة الدم"
                 value={bloodType}
-                onChange={(v) => setBloodType(v as any)}
+                onChange={(v: (typeof BLOOD_TYPES)[number] | "") =>
+                  setBloodType(v)
+                }
                 options={[
                   { value: "", label: "اختر..." },
                   ...BLOOD_TYPES.map((b) => ({ value: b, label: b })),
