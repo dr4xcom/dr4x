@@ -19,7 +19,7 @@ type PublicProfile = {
   city?: string | null;
   country?: string | null;
   show_following_list?: boolean | null;
-  profile_center_path?: string | null; // ممكن يبقى في الجدول لكن لن نستخدمه الآن
+  profile_center_path?: string | null; // موجود في الجدول لكن لا نستخدمه الآن
 };
 
 type NotificationRowLite = {
@@ -30,7 +30,7 @@ type NotificationRowLite = {
 const AVATAR_BUCKET = "avatars";
 const COVER_BUCKET = "covers";
 const SITE_ASSETS_BUCKET = "site_assets";
-const PROFILE_CENTER_GIF_PATH = "profile-center/global.gif"; // ✅ صورة موحدة للجميع
+const PROFILE_CENTER_GIF_PATH = "profile-center/global.gif"; // صورة موحدة للجميع
 
 function v(s?: string | null) {
   const t = (s ?? "").trim();
@@ -74,8 +74,8 @@ export default function PublicUserPage() {
   const [profile, setProfile] = useState<PublicProfile | null>(null);
 
   const [avatarUrl, setAvatarUrl] = useState("");
-  const [coverUrl, setCoverUrl] = useState("");
-  const [centerBannerUrl, setCenterBannerUrl] = useState(""); // ✅ GIF العام
+  const [coverUrl, setCoverUrl] = useState(""); // ما نعرضه الآن لكن نحمّله عادي
+  const [centerBannerUrl, setCenterBannerUrl] = useState(""); // GIF العام
 
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
@@ -93,13 +93,13 @@ export default function PublicUserPage() {
         setErr("");
         setLoading(true);
 
-        // 🟢 مين أنا؟
+        // مين أنا؟
         const { data: uRes, error: uErr } = await supabase.auth.getUser();
         if (uErr) throw uErr;
         const uid = uRes.user?.id ?? null;
         if (alive) setMeId(uid);
 
-        // 🟢 اسم المستخدم من الرابط
+        // اسم المستخدم من الرابط
         const u = decodeURIComponent(rawUsername || "").trim();
         if (!u) {
           if (!alive) return;
@@ -108,7 +108,7 @@ export default function PublicUserPage() {
           return;
         }
 
-        // 🟢 تحميل بيانات البروفايل
+        // تحميل بيانات البروفايل
         const { data, error } = await supabase
           .from("profiles")
           .select(
@@ -129,7 +129,7 @@ export default function PublicUserPage() {
 
         setProfile(prof);
 
-        // 🟢 تحميل روابط الصور (أفاتار + غلاف + GIF موحد من site_assets)
+        // تحميل روابط الصور
         const [a, c, center] = await Promise.all([
           signedUrl(AVATAR_BUCKET, prof.avatar_path),
           signedUrl(COVER_BUCKET, prof.cover_path),
@@ -139,9 +139,9 @@ export default function PublicUserPage() {
         if (!alive) return;
         setAvatarUrl(a);
         setCoverUrl(c);
-        setCenterBannerUrl(center); // نفس الصورة للجميع
+        setCenterBannerUrl(center);
 
-        // 🟢 أعداد المتابعين / الذين يتابعهم
+        // أعداد المتابعين / الذين يتابعهم
         const [
           { data: followersRows, error: followersErr },
           { data: followingRows, error: followingErr },
@@ -163,7 +163,7 @@ export default function PublicUserPage() {
         setFollowersCount(followersRows?.length ?? 0);
         setFollowingCount(followingRows?.length ?? 0);
 
-        // 🟢 هل أنا أتابعه؟
+        // هل أنا أتابعه؟
         if (uid && uid !== prof.id) {
           const { data: relRows, error: relErr } = await supabase
             .from("followers")
@@ -179,7 +179,7 @@ export default function PublicUserPage() {
           setIsFollowing(null);
         }
 
-        // 🟢 شارات الرسائل والإشعارات
+        // شارات الرسائل والإشعارات
         if (uid) {
           try {
             const { data: dmCount, error: dmErr } = await supabase.rpc(
@@ -380,7 +380,6 @@ export default function PublicUserPage() {
     router.push("/notifications");
   }
 
-  // ✅ يسمح بزر العيادة فقط لصاحب البروفايل إذا كان طبيبًا
   const canShowClinicButton = useMemo(() => {
     return !!profile?.is_doctor && isOwner;
   }, [profile, isOwner]);
@@ -428,17 +427,8 @@ export default function PublicUserPage() {
           <>
             {/* بطاقة البروفايل الرئيسية */}
             <div className="rounded-[32px] border border-emerald-500/40 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-950/90 shadow-[0_0_40px_rgba(16,185,129,0.25)] overflow-hidden">
-              {/* الغلاف */}
-              <div className="relative h-[220px] bg-slate-900">
-                {coverUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={coverUrl}
-                    alt="cover"
-                    className="h-full w-full object-cover"
-                  />
-                ) : null}
-
+              {/* هيدر بدون صورة غلاف كبيرة */}
+              <div className="relative h-[140px] sm:h-[150px] bg-slate-900">
                 {/* الصورة الشخصية */}
                 <div className="absolute -bottom-16 right-10">
                   <div className="h-24 w-24 rounded-full bg-emerald-500 text-slate-900 grid place-items-center text-2xl font-extrabold ring-4 ring-slate-950 overflow-hidden shadow-[0_0_25px_rgba(16,185,129,0.8)]">
@@ -456,20 +446,8 @@ export default function PublicUserPage() {
                 </div>
               </div>
 
-              {/* المحتوى تحت الغلاف */}
+              {/* المحتوى تحت الهيدر */}
               <div className="pt-20 pb-6 px-6 sm:px-8">
-                {/* ✅ الصورة الوسطى المشتركة من لوحة التحكم */}
-                {centerBannerUrl && (
-                  <div className="mb-6 flex justify-center">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={centerBannerUrl}
-                      alt="profile center banner"
-                      className="max-h-24 rounded-2xl border border-emerald-500/40 bg-slate-900 object-contain"
-                    />
-                  </div>
-                )}
-
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   {/* بيانات العضو */}
                   <div className="space-y-1">
@@ -573,7 +551,19 @@ export default function PublicUserPage() {
                   ) : null}
                 </div>
 
-                {/* ✅ زر دخول العيادة (يظهر للطبيب صاحب الحساب فقط) */}
+                {/* الصورة العامة الصغيرة تحت البيانات */}
+                {centerBannerUrl && (
+                  <div className="mt-6 flex justify-center">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={centerBannerUrl}
+                      alt="profile center banner"
+                      className="max-h-28 w-full max-w-xl rounded-2xl border border-emerald-500/40 bg-slate-900 object-contain"
+                    />
+                  </div>
+                )}
+
+                {/* زر دخول العيادة (للطبيب صاحب الحساب فقط) */}
                 {canShowClinicButton && (
                   <div className="mt-6 flex justify-center">
                     <button
