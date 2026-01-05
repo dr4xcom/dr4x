@@ -1,286 +1,294 @@
+// src/app/auth/register/patients/page.tsx
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/utils/supabase/client";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { supabase } from "@/utils/supabase/client";
 
 const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] as const;
 
 export default function PatientRegisterPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
 
-  // Common fields
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
-  const [gender, setGender] = useState<"male" | "female">("male");
-  const [nationality, setNationality] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // Patient extra
-  const [age, setAge] = useState<string>("");
-  const [bloodType, setBloodType] = useState<(typeof BLOOD_TYPES)[number] | "">("");
-  const [chronicConditions, setChronicConditions] = useState<string>("");
+  const [gender, setGender] = useState<"male" | "female" | "other" | "">("");
+  const [nationality, setNationality] = useState("");
+  const [bloodType, setBloodType] = useState<string>("");
+  const [chronicConditions, setChronicConditions] = useState("");
+  const [heightCm, setHeightCm] = useState("");
+  const [weightKg, setWeightKg] = useState("");
+  const [age, setAge] = useState("");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
 
-  function validate() {
-    if (!fullName.trim()) return "اكتب الاسم الكامل.";
-    if (!username.trim()) return "اكتب اسم المستخدم (username).";
-    if (!email.trim()) return "اكتب البريد الإلكتروني.";
-    if (email.trim().toLowerCase().startsWith("www.")) return "البريد الإلكتروني غير صحيح (لا تكتب www. قبل البريد).";
-    if (!password || password.length < 6) return "كلمة المرور يجب أن تكون 6 أحرف على الأقل.";
-    if (!nationality.trim()) return "اكتب الجنسية.";
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-    if (!age.trim()) return "اكتب العمر.";
-    const n = Number(age);
-    if (!Number.isFinite(n) || n <= 0 || n > 120) return "العمر غير صحيح.";
-    if (!bloodType) return "اختر فصيلة الدم.";
-
-    return null;
-  }
-
-  async function onSubmit() {
-    setErr(null);
-    setMsg(null);
-
-    const v = validate();
-    if (v) return setErr(v);
-
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setErrorMsg(null);
+    setSuccessMsg(null);
     setLoading(true);
+
     try {
-      const redirectTo =
-        typeof window !== "undefined" ? `${window.location.origin}/auth/confirm` : undefined;
+      if (!email || !password) {
+        throw new Error("الرجاء إدخال البريد الإلكتروني وكلمة المرور");
+      }
 
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: {
-          emailRedirectTo: redirectTo,
-          data: {
-            full_name: fullName.trim(),
-            username: username.trim(),
-            role: "patient",
-          },
-        },
-      });
+      // 1) إنشاء المستخدم في Supabase Auth
+      const { data: signUpData, error: signUpError } =
+        await supabase.auth.signUp({
+          email,
+          password,
+        });
 
-      if (error) throw error;
+      if (signUpError) {
+        throw new Error(signUpError.message);
+      }
 
-      const uid = data.user?.id;
-      if (!uid) throw new Error("لم يتم إنشاء المستخدم (uid).");
+      const user = signUpData.user;
+      if (!user) {
+        throw new Error("تعذر الحصول على بيانات المستخدم بعد التسجيل");
+      }
 
-      const payload: any = {
-        uid,
-        mode: "patient",
-        profile: {
-          id: uid,
-          full_name: fullName.trim(),
-          username: username.trim(),
-          email: email.trim(),
-          is_doctor: false,
-        },
-        patient: {
-          nationality: nationality.trim(),
-          gender,
-          blood_type: bloodType || null,
-          chronic_conditions: chronicConditions.trim() || null,
-          age: Number(age),
-        },
-      };
+      const uid = user.id;
 
+      // 2) استدعاء API الخاص بالـ onboard (يستخدم service role)
       const res = await fetch("/api/auth/onboard", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          uid,
+          mode: "patient",
+          profile: {
+            username: username || null,
+            full_name: fullName || null,
+            email: email || null,
+            whatsapp_number: whatsappNumber || null,
+            is_doctor: false,
+          },
+          patient: {
+            nationality: nationality || null,
+            gender:
+              gender === "male"
+                ? "male"
+                : gender === "female"
+                ? "female"
+                : null,
+            blood_type: bloodType || null,
+            chronic_conditions: chronicConditions || null,
+            height_cm: heightCm || null,
+            weight_kg: weightKg || null,
+            age: age || null,
+          },
+        }),
       });
 
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json?.ok) throw new Error(json?.error || "فشل إنشاء بيانات الحساب.");
+      const json = await res.json().catch(() => null);
 
-      setMsg("تم إنشاء حساب المريض ✅ تقدر الآن تروح لتسجيل الدخول.");
-      setTimeout(() => router.push("/auth/login"), 600);
-    } catch (e: any) {
-      setErr(e?.message || "حدث خطأ");
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "حدث خطأ أثناء إنشاء ملف المريض");
+      }
+
+      setSuccessMsg("تم إنشاء حساب المريض بنجاح، يمكنك الآن تسجيل الدخول.");
+      // ممكن تحويل مباشر لصفحة الدخول
+      setTimeout(() => {
+        router.push("/auth/login");
+      }, 1500);
+    } catch (err: any) {
+      console.error("patient register error:", err);
+      setErrorMsg(err?.message || "حدث خطأ غير متوقع أثناء التسجيل");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-8">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <div className="text-sm text-slate-500">DR4X</div>
-          <div className="text-2xl font-extrabold text-slate-900">إنشاء حساب مريض</div>
-          <div className="mt-1 text-xs text-slate-500">
-            روابط مهمة:{" "}
-            <span className="font-mono">/auth/login</span>{" "}
-            <span className="text-slate-300">|</span>{" "}
-            <span className="font-mono">/auth/register</span>{" "}
-            <span className="text-slate-300">|</span>{" "}
-            <span className="font-mono">/auth/register/patients</span>
-          </div>
+    <div className="min-h-screen flex items-start justify-center bg-slate-50 py-10 px-4">
+      <div className="w-full max-w-xl">
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-slate-900">إنشاء حساب مريض</h1>
+          <Link
+            href="/auth/login"
+            className="text-sm text-blue-600 hover:underline"
+          >
+            عندك حساب؟ دخول
+          </Link>
         </div>
 
-        <Link
-          href="/auth/login"
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 hover:bg-slate-50"
-        >
-          عندك حساب؟ دخول
-        </Link>
-      </div>
+        <div className="bg-white border border-slate-200 rounded-3xl shadow-sm p-6 space-y-4">
+          {errorMsg && (
+            <div className="bg-red-50 border border-red-200 text-red-700 rounded-2xl px-4 py-3 text-sm">
+              {errorMsg}
+            </div>
+          )}
 
-      <div className="dr4x-card p-4">
-        {err ? (
-          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            {err}
-          </div>
-        ) : null}
+          {successMsg && (
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-2xl px-4 py-3 text-sm">
+              {successMsg}
+            </div>
+          )}
 
-        {msg ? (
-          <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-            {msg}
-          </div>
-        ) : null}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* الاسم / اليوزر / واتساب */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-sm text-slate-700">الاسم الكامل</label>
+                <input
+                  type="text"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-500"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                />
+              </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Field label="الاسم الكامل" value={fullName} onChange={setFullName} placeholder="مثال: محمد أحمد" />
-          <Field label="اسم المستخدم (username)" value={username} onChange={setUsername} placeholder="مثال: dr4x" />
+              <div className="space-y-1">
+                <label className="text-sm text-slate-700">(username) اسم المستخدم</label>
+                <input
+                  type="text"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-500"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                />
+              </div>
 
-          <Select
-            label="الجنس"
-            value={gender}
-            onChange={(v) => setGender(v as any)}
-            options={[
-              { value: "male", label: "ذكر" },
-              { value: "female", label: "أنثى" },
-            ]}
-          />
+              <div className="space-y-1 md:col-span-2">
+                <label className="text-sm text-slate-700">رقم الواتساب</label>
+                <input
+                  type="tel"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-500"
+                  value={whatsappNumber}
+                  onChange={(e) => setWhatsappNumber(e.target.value)}
+                />
+              </div>
+            </div>
 
-          <Field label="الجنسية" value={nationality} onChange={setNationality} placeholder="مثال: سعودي" />
+            {/* البريد / كلمة المرور */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-sm text-slate-700">البريد الإلكتروني</label>
+                <input
+                  type="email"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-500"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
 
-          <Field label="البريد الإلكتروني" value={email} onChange={setEmail} placeholder="name@email.com" type="email" />
-          <Field label="كلمة المرور" value={password} onChange={setPassword} placeholder="••••••••" type="password" />
-        </div>
+              <div className="space-y-1">
+                <label className="text-sm text-slate-700">كلمة المرور</label>
+                <input
+                  type="password"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-500"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
 
-        <div className="mt-5">
-          <div className="text-sm font-extrabold text-slate-900 mb-2">بيانات المريض</div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Field label="العمر" value={age} onChange={setAge} placeholder="مثال: 28" type="number" />
-            <Select
-              label="فصيلة الدم"
-              value={bloodType}
-              onChange={(v) => setBloodType(v as any)}
-              options={[
-                { value: "", label: "اختر..." },
-                ...BLOOD_TYPES.map((b) => ({ value: b, label: b })),
-              ]}
-            />
-            <TextArea
-              label="الأمراض المزمنة (اختياري)"
-              value={chronicConditions}
-              onChange={setChronicConditions}
-              placeholder="مثال: سكري، ضغط..."
-            />
-          </div>
-        </div>
+            {/* معلومات صحية */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-sm text-slate-700">الجنس</label>
+                <select
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-500"
+                  value={gender}
+                  onChange={(e) =>
+                    setGender(e.target.value as "male" | "female" | "other" | "")
+                  }
+                >
+                  <option value="">— اختر —</option>
+                  <option value="male">ذكر</option>
+                  <option value="female">أنثى</option>
+                </select>
+              </div>
 
-        <button
-          onClick={onSubmit}
-          disabled={loading}
-          className="mt-6 w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-extrabold text-white hover:bg-slate-800 disabled:opacity-60"
-        >
-          {loading ? "جارٍ إنشاء الحساب..." : "إنشاء حساب مريض"}
-        </button>
+              <div className="space-y-1">
+                <label className="text-sm text-slate-700">الجنسية</label>
+                <input
+                  type="text"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-500"
+                  value={nationality}
+                  onChange={(e) => setNationality(e.target.value)}
+                />
+              </div>
 
-        <div className="mt-3 text-xs text-slate-500">
-          بإكمال التسجيل أنت توافق على سياسات الموقع.
+              <div className="space-y-1">
+                <label className="text-sm text-slate-700">فصيلة الدم</label>
+                <select
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-500"
+                  value={bloodType}
+                  onChange={(e) => setBloodType(e.target.value)}
+                >
+                  <option value="">— اختر —</option>
+                  {BLOOD_TYPES.map((bt) => (
+                    <option key={bt} value={bt}>
+                      {bt}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm text-slate-700">الأمراض المزمنة (إن وجدت)</label>
+                <input
+                  type="text"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-500"
+                  value={chronicConditions}
+                  onChange={(e) => setChronicConditions(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm text-slate-700">الطول (سم)</label>
+                <input
+                  type="number"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-500"
+                  value={heightCm}
+                  onChange={(e) => setHeightCm(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm text-slate-700">الوزن (كجم)</label>
+                <input
+                  type="number"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-500"
+                  value={weightKg}
+                  onChange={(e) => setWeightKg(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm text-slate-700">العمر</label>
+                <input
+                  type="number"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-500"
+                  value={age}
+                  onChange={(e) => setAge(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-2xl bg-slate-900 text-white py-2.5 text-sm font-semibold hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {loading ? "جارٍ إنشاء الحساب..." : "إنشاء حساب مريض"}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  type?: string;
-}) {
-  return (
-    <label className="block">
-      <div className="mb-1 text-xs font-bold text-slate-600">{label}</div>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400"
-      />
-    </label>
-  );
-}
-
-function TextArea({
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <label className="block md:col-span-2">
-      <div className="mb-1 text-xs font-bold text-slate-600">{label}</div>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        rows={3}
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400"
-      />
-    </label>
-  );
-}
-
-function Select({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-}) {
-  return (
-    <label className="block">
-      <div className="mb-1 text-xs font-bold text-slate-600">{label}</div>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400"
-      >
-        {options.map((o) => (
-          <option key={o.value || o.label} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }
