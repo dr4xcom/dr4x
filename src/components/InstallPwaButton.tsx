@@ -1,4 +1,3 @@
-// src/components/InstallPwaButton.tsx
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -17,26 +16,29 @@ declare global {
 export default function InstallPwaButton() {
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
-  const [showHint, setShowHint] = useState(false);
-  const [hidden, setHidden] = useState(false);
+  const [canInstall, setCanInstall] = useState(false);
+  const [showIosHint, setShowIosHint] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
+    // 👈 نكشف هل الجهاز iPhone / iPad
+    const ios =
+      /iphone|ipad|ipod/i.test(window.navigator.userAgent) &&
+      !(window.navigator as any).standalone;
+
+    setIsIOS(ios);
+
     const isStandalone =
       (window.matchMedia &&
         window.matchMedia("(display-mode: standalone)").matches) ||
-      // iOS
       (window.navigator as any).standalone === true;
 
-    // لو هو فاتح التطبيق كـ PWA فعلاً ما نعرض الزر
-    if (isStandalone) {
-      setHidden(true);
-      return;
-    }
+    if (isStandalone) return;
 
     function handleBeforeInstall(e: BeforeInstallPromptEvent) {
       e.preventDefault();
       setDeferredPrompt(e);
-      setHidden(false);
+      setCanInstall(true);
     }
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstall);
@@ -46,38 +48,42 @@ export default function InstallPwaButton() {
     };
   }, []);
 
-  if (hidden) return null;
-
   async function handleClick() {
+    // أندرويد → يظهر نافذة التثبيت
     if (deferredPrompt) {
-      try {
-        await deferredPrompt.prompt();
-        await deferredPrompt.userChoice;
-      } finally {
-        setDeferredPrompt(null);
-      }
+      await deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      setDeferredPrompt(null);
+      setCanInstall(false);
       return;
     }
 
-    // لو ما فيه حدث beforeinstallprompt نعرض ملاحظة عامة
-    setShowHint(true);
-    setTimeout(() => setShowHint(false), 8000);
+    // iPhone فقط → نظهر رسالة الشرح
+    if (isIOS) {
+      setShowIosHint(true);
+      setTimeout(() => setShowIosHint(false), 8000);
+    }
   }
+
+  // نخفي الزر إذا لا يمكن تثبيته ولم يكن iOS
+  if (!canInstall && !isIOS) return null;
 
   return (
     <div className="flex flex-col items-center gap-2">
       <button
         type="button"
         onClick={handleClick}
-        className="rounded-2xl border border-emerald-500/60 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-500/20 hover:border-emerald-400 transition"
+        className="rounded-2xl border border-emerald-500/60 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/20 hover:border-emerald-400 transition shadow-[0_0_18px_rgba(16,185,129,0.35)]"
       >
         تثبيت تطبيق DR4X 📲
       </button>
 
-      {showHint && (
-        <div className="max-w-xs rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-700 leading-relaxed text-center">
-          يمكنك إضافة الموقع إلى الشاشة الرئيسية من إعدادات المتصفح
-          (Install App / Add to Home Screen) ثم ستظهر أيقونة DR4X على جوالك.
+      {showIosHint && (
+        <div className="max-w-xs rounded-2xl border border-slate-700 bg-slate-900/90 px-3 py-2 text-[11px] text-slate-200 leading-relaxed text-center">
+          📱 <span className="font-semibold">على أجهزة الآيفون:</span><br />
+          اضغط على زر <span className="font-semibold">المشاركة (Share)</span>،
+          ثم اختر <span className="font-semibold">إضافة إلى الشاشة الرئيسية (Add to Home Screen)</span>.<br />
+          بعد ذلك ستظهر أيقونة <span className="font-semibold">DR4X</span> كتطبيق على جوالك.
         </div>
       )}
     </div>
