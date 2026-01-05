@@ -308,7 +308,7 @@ function SidebarMock({ onOpenComposer }: { onOpenComposer: () => void }) {
                     setMenuOpen(false);
                     goPublicProfile();
                   }}
-                  className="w-full text-start px-3 py-3 text-sm hover:bg-slate-50"
+                  className="w-full text-start px-3 py-3 text-sm hover:bg-slate-50 text-slate-900 font-semibold"
                 >
                   ملفي الشخصي
                 </button>
@@ -320,7 +320,7 @@ function SidebarMock({ onOpenComposer }: { onOpenComposer: () => void }) {
                     setMenuOpen(false);
                     router.push("/admin");
                   }}
-                  className="w-full text-start px-4 py-3 text-sm hover:bg-slate-50"
+                  className="w-full text-start px-4 py-3 text-sm hover:bg-slate-50 text-slate-900 font-semibold"
                 >
                   لوحة التحكم
                 </button>
@@ -332,9 +332,21 @@ function SidebarMock({ onOpenComposer }: { onOpenComposer: () => void }) {
                     setMenuOpen(false);
                     router.push("/patient/profile");
                   }}
-                  className="w-full text-start px-4 py-3 text-sm hover:bg-slate-50"
+                  className="w-full text-start px-4 py-3 text-sm hover:bg-slate-50 text-slate-900 font-semibold"
                 >
                   ملفي الصحي
+                </button>
+
+                {/* ✅ زر خاص بالطبيب في الانسدالة */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    router.push("/doctor/clinic");
+                  }}
+                  className="w-full text-start px-4 py-3 text-sm hover:bg-slate-50 text-slate-900 font-semibold"
+                >
+                  عيادة الطبيب
                 </button>
 
                 <button
@@ -343,7 +355,7 @@ function SidebarMock({ onOpenComposer }: { onOpenComposer: () => void }) {
                     setMenuOpen(false);
                     router.push("/settings");
                   }}
-                  className="w-full text-start px-4 py-3 text-sm hover:bg-slate-50"
+                  className="w-full text-start px-4 py-3 text-sm hover:bg-slate-50 text-slate-900 font-semibold"
                 >
                   الإعدادات
                 </button>
@@ -354,7 +366,7 @@ function SidebarMock({ onOpenComposer }: { onOpenComposer: () => void }) {
                     setMenuOpen(false);
                     handleLogout();
                   }}
-                  className="w-full text-start px-4 py-3 text-sm text-red-600 hover:bg-slate-50"
+                  className="w-full text-start px-4 py-3 text-sm text-red-600 font-semibold hover:bg-slate-50"
                 >
                   خروج
                 </button>
