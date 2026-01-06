@@ -25,7 +25,6 @@ import {
   ReplyRow,
   extractYouTubeId,
   formatTime,
-  // getAvatarUrl,  ✅ لم نعد نحتاجها هنا
   getDisplayName,
   getHandle,
   getInitials,
@@ -140,7 +139,7 @@ export default function PostCard({
   const verified = isVerified(prof);
   const initials = getInitials(name);
 
-  // ✅ رابط صورة العضو (نفس منطق صفحة البروفايل: نستخدم Supabase Storage)
+  // رابط صورة العضو من Supabase Storage
   const [avatarUrl, setAvatarUrl] = useState("");
 
   useEffect(() => {
@@ -149,7 +148,6 @@ export default function PostCard({
     (async () => {
       try {
         const p: any = prof ?? {};
-        // نحاول جميع الحقول المحتملة لمسار الصورة
         const raw =
           (p.avatar_path as string | null) ??
           (p.avatar_url as string | null) ??
@@ -161,7 +159,7 @@ export default function PostCard({
           return;
         }
 
-        // لو هو رابط جاهز (خارجي أو يبدأ بـ /) نستخدمه مباشرة
+        // لو هو رابط جاهز نستخدمه مباشرة
         if (
           v.startsWith("http://") ||
           v.startsWith("https://") ||
@@ -174,7 +172,7 @@ export default function PostCard({
         // مسار داخل Bucket avatars → نستخدم createSignedUrl
         const { data, error } = await supabase.storage
           .from(AVATAR_BUCKET)
-          .createSignedUrl(v, 60 * 60); // ساعة
+          .createSignedUrl(v, 60 * 60);
 
         if (error) {
           console.error("PostCard avatar signedUrl error", error);
@@ -186,9 +184,7 @@ export default function PostCard({
         if (!alive) return;
 
         setAvatarUrl(
-          url
-            ? `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`
-            : ""
+          url ? `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}` : ""
         );
       } catch (e) {
         console.error("PostCard avatar load error", e);
@@ -219,10 +215,9 @@ export default function PostCard({
     router.push(`/post/${post.id}`);
   }
 
-  // ✅ المشاهدات
   const views = Number(post.view_count ?? 0);
 
-  // ✅ رابط صفحة المستخدم العامة /u/[username]
+  // رابط صفحة المستخدم العامة /u/[username]
   const profileUsername = useMemo(() => {
     const u = (prof as any)?.username ? String((prof as any).username) : "";
     if (u) return u;
@@ -416,7 +411,11 @@ export default function PostCard({
               title="عرض الصورة"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={src} alt="post" className="w-full h-full object-cover" />
+              <img
+                src={src}
+                alt="post"
+                className="w-full h-full object-cover"
+              />
             </button>
           ))}
         </div>
@@ -500,9 +499,7 @@ export default function PostCard({
           {retweetCount > 0 ? (
             <span className="text-xs text-slate-500">({retweetCount})</span>
           ) : null}
-          {retweeted ? (
-            <span className="text-xs text-slate-500">✓</span>
-          ) : null}
+          {retweeted ? <span className="text-xs text-slate-500">✓</span> : null}
         </button>
 
         <button
