@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { supabase } from "@/utils/supabase/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -255,14 +255,28 @@ export default function PatientRegisterPage() {
 
 /* ---------- العناصر المساعدة ---------- */
 
-function Field({ label, value, onChange, placeholder, type = "text" }: any) {
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+}) {
   return (
     <label className="block">
       <div className="mb-1 text-xs font-bold text-emerald-400">{label}</div>
       <input
         type={type}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+          onChange(e.target.value)
+        }
         placeholder={placeholder}
         className="w-full rounded-xl border border-emerald-700 bg-black px-3 py-2 text-base text-emerald-200 outline-none focus:border-emerald-400"
       />
@@ -270,13 +284,25 @@ function Field({ label, value, onChange, placeholder, type = "text" }: any) {
   );
 }
 
-function TextArea({ label, value, onChange, placeholder }: any) {
+function TextArea({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
   return (
     <label className="block md:col-span-2">
       <div className="mb-1 text-xs font-bold text-emerald-400">{label}</div>
       <textarea
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+          onChange(e.target.value)
+        }
         placeholder={placeholder}
         rows={3}
         className="w-full rounded-xl border border-emerald-700 bg-black px-3 py-2 text-base text-emerald-200 outline-none focus:border-emerald-400"
@@ -285,17 +311,33 @@ function TextArea({ label, value, onChange, placeholder }: any) {
   );
 }
 
-function Select({ label, value, onChange, options }: any) {
+function Select<T extends string | number>({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: T;
+  onChange: (v: T) => void;
+  options: { value: T; label: string }[];
+}) {
   return (
     <label className="block">
       <div className="mb-1 text-xs font-bold text-emerald-400">{label}</div>
       <select
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+          onChange(e.target.value as T)
+        }
         className="w-full rounded-xl border border-emerald-700 bg-black px-3 py-2 text-base text-emerald-200 outline-none focus:border-emerald-400"
       >
-        {options.map((o: any) => (
-          <option key={o.value || o.label} value={o.value} className="bg-black">
+        {options.map((o) => (
+          <option
+            key={String(o.value) || o.label}
+            value={o.value}
+            className="bg-black"
+          >
             {o.label}
           </option>
         ))}
