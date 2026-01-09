@@ -1,44 +1,68 @@
 "use client";
 
-import { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/utils/supabase/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] as const;
+const COUNTRIES = [
+  "السعودية",
+  "الإمارات",
+  "الكويت",
+  "قطر",
+  "البحرين",
+  "عُمان",
+  "مصر",
+  "الأردن",
+  "فلسطين",
+  "لبنان",
+  "سوريا",
+  "العراق",
+  "اليمن",
+  "السودان",
+  "المغرب",
+  "الجزائر",
+  "تونس",
+  "ليبيا",
+  "تركيا",
+  "أخرى",
+] as const;
+
+const SITE_ASSETS_BUCKET = "site_assets";
+const PROFILE_CENTER_GIF_PATH = "profile-center/global.gif";
 
 export default function PatientRegisterPage() {
   const router = useRouter();
+
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  // Common fields
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
-  const [gender, setGender] = useState<"male" | "female">("male");
-  const [nationality, setNationality] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // Patient extra
-  const [age, setAge] = useState<string>("");
-  const [bloodType, setBloodType] = useState<(typeof BLOOD_TYPES)[number] | "">("");
-  const [chronicConditions, setChronicConditions] = useState<string>("");
+  const [country, setCountry] =
+    useState<(typeof COUNTRIES)[number]>("السعودية");
+  const [gender, setGender] = useState<"male" | "female">("male");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
+
+  const [gifUrl, setGifUrl] = useState<string>("");
+
+  useEffect(() => {
+    const { data } = supabase.storage
+      .from(SITE_ASSETS_BUCKET)
+      .getPublicUrl(PROFILE_CENTER_GIF_PATH);
+    setGifUrl(data?.publicUrl || "");
+  }, []);
 
   function validate() {
     if (!fullName.trim()) return "اكتب الاسم الكامل.";
-    if (!username.trim()) return "اكتب اسم المستخدم (username).";
+    if (!username.trim()) return "اكتب اسم المستخدم.";
     if (!email.trim()) return "اكتب البريد الإلكتروني.";
-    if (email.trim().toLowerCase().startsWith("www.")) return "البريد الإلكتروني غير صحيح (لا تكتب www. قبل البريد).";
-    if (!password || password.length < 6) return "كلمة المرور يجب أن تكون 6 أحرف على الأقل.";
-    if (!nationality.trim()) return "اكتب الجنسية.";
-
-    if (!age.trim()) return "اكتب العمر.";
-    const n = Number(age);
-    if (!Number.isFinite(n) || n <= 0 || n > 120) return "العمر غير صحيح.";
-    if (!bloodType) return "اختر فصيلة الدم.";
-
+    if (!password || password.length < 6)
+      return "كلمة المرور يجب أن تكون 6 أحرف على الأقل.";
     return null;
   }
 
@@ -52,7 +76,9 @@ export default function PatientRegisterPage() {
     setLoading(true);
     try {
       const redirectTo =
-        typeof window !== "undefined" ? `${window.location.origin}/auth/confirm` : undefined;
+        typeof window !== "undefined"
+          ? `${window.location.origin}/auth/confirm`
+          : undefined;
 
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
@@ -70,7 +96,7 @@ export default function PatientRegisterPage() {
       if (error) throw error;
 
       const uid = data.user?.id;
-      if (!uid) throw new Error("لم يتم إنشاء المستخدم (uid).");
+      if (!uid) throw new Error("لم يتم إنشاء المستخدم.");
 
       const payload: any = {
         uid,
@@ -81,13 +107,12 @@ export default function PatientRegisterPage() {
           username: username.trim(),
           email: email.trim(),
           is_doctor: false,
+          whatsapp_number: whatsappNumber.trim() || null,
+          country,
         },
         patient: {
-          nationality: nationality.trim(),
+          nationality: country,
           gender,
-          blood_type: bloodType || null,
-          chronic_conditions: chronicConditions.trim() || null,
-          age: Number(age),
         },
       };
 
@@ -98,10 +123,11 @@ export default function PatientRegisterPage() {
       });
 
       const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json?.ok) throw new Error(json?.error || "فشل إنشاء بيانات الحساب.");
+      if (!res.ok || !json?.ok)
+        throw new Error(json?.error || "فشل إنشاء الحساب.");
 
-      setMsg("تم إنشاء حساب المريض ✅ تقدر الآن تروح لتسجيل الدخول.");
-      setTimeout(() => router.push("/auth/login"), 600);
+      setMsg("تم إنشاء الحساب ✅ راجع بريدك للتفعيل.");
+      setTimeout(() => router.push("/auth/login"), 900);
     } catch (e: any) {
       setErr(e?.message || "حدث خطأ");
     } finally {
@@ -109,95 +135,103 @@ export default function PatientRegisterPage() {
     }
   }
 
+  const hackerBg = useMemo(
+    () =>
+      "relative min-h-[100dvh] bg-slate-950 text-slate-100 flex items-center justify-center px-4 py-10",
+    []
+  );
+
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-8">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <div className="text-sm text-slate-500">DR4X</div>
-          <div className="text-2xl font-extrabold text-slate-900">إنشاء حساب مريض</div>
-          <div className="mt-1 text-xs text-slate-500">
-            روابط مهمة:{" "}
-            <span className="font-mono">/auth/login</span>{" "}
-            <span className="text-slate-300">|</span>{" "}
-            <span className="font-mono">/auth/register</span>{" "}
-            <span className="text-slate-300">|</span>{" "}
-            <span className="font-mono">/auth/register/patients</span>
+    <div className={hackerBg}>
+      <div className="relative w-full max-w-xl">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <div className="text-xs tracking-[0.3em] text-emerald-300 font-mono">
+              DR4X SECURE REGISTER
+            </div>
+            <div className="text-2xl font-extrabold">إنشاء حساب مريض</div>
           </div>
+
+          <Link
+            href="/auth/login"
+            className="rounded-full border border-emerald-500/60 bg-slate-900/80 px-4 py-2 text-sm font-bold text-emerald-200"
+          >
+            دخول
+          </Link>
         </div>
 
-        <Link
-          href="/auth/login"
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 hover:bg-slate-50"
-        >
-          عندك حساب؟ دخول
-        </Link>
-      </div>
+        <div className="rounded-3xl border border-emerald-500/50 bg-slate-900/70">
+          <div className="p-4 space-y-4">
+            {gifUrl && (
+              <img
+                src={gifUrl}
+                alt="Profile"
+                className="mx-auto h-32 w-full max-w-sm rounded-xl object-cover border border-emerald-500/40"
+              />
+            )}
 
-      <div className="dr4x-card p-4">
-        {err ? (
-          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            {err}
-          </div>
-        ) : null}
+            {err && (
+              <div className="rounded-xl border border-red-500/50 bg-red-950/40 p-3 text-sm text-red-200">
+                {err}
+              </div>
+            )}
 
-        {msg ? (
-          <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-            {msg}
-          </div>
-        ) : null}
+            {msg && (
+              <div className="rounded-xl border border-emerald-500/50 bg-emerald-950/40 p-3 text-sm text-emerald-200">
+                {msg}
+              </div>
+            )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Field label="الاسم الكامل" value={fullName} onChange={setFullName} placeholder="مثال: محمد أحمد" />
-          <Field label="اسم المستخدم (username)" value={username} onChange={setUsername} placeholder="مثال: dr4x" />
-
-          <Select
-            label="الجنس"
-            value={gender}
-            onChange={(v) => setGender(v as any)}
-            options={[
-              { value: "male", label: "ذكر" },
-              { value: "female", label: "أنثى" },
-            ]}
-          />
-
-          <Field label="الجنسية" value={nationality} onChange={setNationality} placeholder="مثال: سعودي" />
-
-          <Field label="البريد الإلكتروني" value={email} onChange={setEmail} placeholder="name@email.com" type="email" />
-          <Field label="كلمة المرور" value={password} onChange={setPassword} placeholder="••••••••" type="password" />
-        </div>
-
-        <div className="mt-5">
-          <div className="text-sm font-extrabold text-slate-900 mb-2">بيانات المريض</div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Field label="العمر" value={age} onChange={setAge} placeholder="مثال: 28" type="number" />
+            <Field
+              label="الاسم الكامل"
+              value={fullName}
+              onChange={setFullName}
+            />
+            <Field
+              label="اسم المستخدم"
+              value={username}
+              onChange={setUsername}
+            />
+            <Field
+              label="البريد الإلكتروني"
+              value={email}
+              onChange={setEmail}
+            />
             <Select
-              label="فصيلة الدم"
-              value={bloodType}
-              onChange={(v) => setBloodType(v as any)}
+              label="الدولة"
+              value={country}
+              onChange={setCountry}
+              options={COUNTRIES}
+            />
+            <Select
+              label="الجنس"
+              value={gender}
+              onChange={setGender}
               options={[
-                { value: "", label: "اختر..." },
-                ...BLOOD_TYPES.map((b) => ({ value: b, label: b })),
+                { value: "male", label: "ذكر" },
+                { value: "female", label: "أنثى" },
               ]}
             />
-            <TextArea
-              label="الأمراض المزمنة (اختياري)"
-              value={chronicConditions}
-              onChange={setChronicConditions}
-              placeholder="مثال: سكري، ضغط..."
+            <Field
+              label="كلمة المرور"
+              value={password}
+              onChange={setPassword}
+              type="password"
             />
+            <Field
+              label="واتساب (اختياري)"
+              value={whatsappNumber}
+              onChange={setWhatsappNumber}
+            />
+
+            <button
+              onClick={onSubmit}
+              disabled={loading}
+              className="w-full rounded-2xl bg-emerald-400 px-4 py-3 text-lg font-extrabold text-slate-950 hover:bg-emerald-300"
+            >
+              {loading ? "جارٍ التسجيل..." : "تسجيل"}
+            </button>
           </div>
-        </div>
-
-        <button
-          onClick={onSubmit}
-          disabled={loading}
-          className="mt-6 w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-extrabold text-white hover:bg-slate-800 disabled:opacity-60"
-        >
-          {loading ? "جارٍ إنشاء الحساب..." : "إنشاء حساب مريض"}
-        </button>
-
-        <div className="mt-3 text-xs text-slate-500">
-          بإكمال التسجيل أنت توافق على سياسات الموقع.
         </div>
       </div>
     </div>
@@ -208,49 +242,31 @@ function Field({
   label,
   value,
   onChange,
-  placeholder,
   type = "text",
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
-  placeholder?: string;
   type?: string;
 }) {
   return (
     <label className="block">
-      <div className="mb-1 text-xs font-bold text-slate-600">{label}</div>
+      <div className="mb-1 text-sm font-bold text-emerald-300">{label}</div>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400"
-      />
-    </label>
-  );
-}
-
-function TextArea({
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <label className="block md:col-span-2">
-      <div className="mb-1 text-xs font-bold text-slate-600">{label}</div>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        rows={3}
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400"
+        className="
+          w-full rounded-xl
+          border-2 border-emerald-500/60
+          bg-slate-800/70
+          px-4 py-3
+          text-base text-slate-100
+          shadow-inner
+          outline-none
+          focus:border-emerald-400
+          focus:ring-2 focus:ring-emerald-400/40
+        "
       />
     </label>
   );
@@ -263,23 +279,39 @@ function Select({
   options,
 }: {
   label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
+  value: any;
+  onChange: (v: any) => void;
+  options: readonly string[] | { value: string; label: string }[];
 }) {
   return (
     <label className="block">
-      <div className="mb-1 text-xs font-bold text-slate-600">{label}</div>
+      <div className="mb-1 text-sm font-bold text-emerald-300">{label}</div>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-slate-400"
+        className="
+          w-full rounded-xl
+          border-2 border-emerald-500/60
+          bg-slate-800/70
+          px-4 py-3
+          text-base text-slate-100
+          shadow-inner
+          outline-none
+          focus:border-emerald-400
+          focus:ring-2 focus:ring-emerald-400/40
+        "
       >
-        {options.map((o) => (
-          <option key={o.value || o.label} value={o.value}>
-            {o.label}
-          </option>
-        ))}
+        {options.map((o: any) =>
+          typeof o === "string" ? (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ) : (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          )
+        )}
       </select>
     </label>
   );

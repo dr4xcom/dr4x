@@ -1,12 +1,7 @@
 // src/app/doctor/clinic/page.tsx
 "use client";
 
-import React, {
-  useEffect,
-  useState,
-  useCallback,
-  useMemo,
-} from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { FeatureFlags, getFeatureFlags } from "@/utils/systemSettings";
@@ -80,7 +75,9 @@ export default function DoctorClinicPage() {
   >({});
   const [selectedQueueId, setSelectedQueueId] = useState<string | null>(null);
 
-  const [patientFiles, setPatientFiles] = useState<PatientFileRow[] | null>(null);
+  const [patientFiles, setPatientFiles] = useState<PatientFileRow[] | null>(
+    null
+  );
   const [filesErr, setFilesErr] = useState<string | null>(null);
   const [filesLoading, setFilesLoading] = useState(false);
 
@@ -88,7 +85,9 @@ export default function DoctorClinicPage() {
   const [vitalsErr, setVitalsErr] = useState<string | null>(null);
   const [vitalsLoading, setVitalsLoading] = useState(false);
 
-  const [patientExtra, setPatientExtra] = useState<PatientExtraRow | null>(null);
+  const [patientExtra, setPatientExtra] = useState<PatientExtraRow | null>(
+    null
+  );
 
   // الوصفة
   const [showPrescription, setShowPrescription] = useState(false);
@@ -115,16 +114,12 @@ export default function DoctorClinicPage() {
     if (!vitals || vitals.length === 0) return null;
     const byType = (t: string) =>
       vitals.find(
-        (v) =>
-          v.vital_type === t &&
-          (v.value_text || v.value_numeric !== null)
+        (v) => v.vital_type === t && (v.value_text || v.value_numeric !== null)
       );
     const candidate =
       byType("complaint") ||
       byType("note") ||
-      vitals.find((v) =>
-        v.vital_type.toLowerCase().includes("complaint")
-      );
+      vitals.find((v) => v.vital_type.toLowerCase().includes("complaint"));
     return candidate?.value_text || null;
   }, [vitals]);
 
@@ -212,7 +207,6 @@ export default function DoctorClinicPage() {
     }
   }, []);
 
-  // إنهاء الجلسة (البث)
   const handleEndSession = useCallback(async () => {
     if (!selectedRow) return;
     if (!window.confirm("هل تريد إنهاء الجلسة الحالية؟")) return;
@@ -225,11 +219,12 @@ export default function DoctorClinicPage() {
 
       if (error) {
         console.error("end session error", error);
-        alert("تعذّر إنهاء الجلسة، تحقق من الصلاحيات أو جدول consultation_queue.");
+        alert(
+          "تعذّر إنهاء الجلسة، تحقق من الصلاحيات أو جدول consultation_queue."
+        );
         return;
       }
 
-      // إزالة المريض من القائمة محلياً
       setQueueRows((prev) => prev.filter((r) => r.id !== selectedRow.id));
       setSelectedQueueId(null);
       setPatientFiles(null);
@@ -241,11 +236,11 @@ export default function DoctorClinicPage() {
     }
   }, [selectedRow]);
 
-  // حفظ الوصفة في جدول consultation_messages
   const currentPatientBasicName =
-    (selectedPatientProfile?.full_name ||
-      selectedPatientProfile?.username ||
-      "") || null;
+    selectedPatientProfile?.full_name ||
+    selectedPatientProfile?.username ||
+    "" ||
+    null;
 
   const handleSavePrescription = useCallback(async () => {
     if (!selectedRow) {
@@ -275,12 +270,7 @@ export default function DoctorClinicPage() {
       const ageLine =
         patientExtra?.age != null ? `العمر: ${patientExtra.age} سنة` : null;
 
-      const text = [
-        `وصفة طبية للمريض: ${name}`,
-        ageLine || undefined,
-        "",
-        body,
-      ]
+      const text = [`وصفة طبية للمريض: ${name}`, ageLine || undefined, "", body]
         .filter(Boolean)
         .join("\n");
 
@@ -300,7 +290,6 @@ export default function DoctorClinicPage() {
         return;
       }
 
-      // نجاح
       setPrescriptionSaving(false);
       setShowPrescription(false);
       setPrescriptionText("");
@@ -309,12 +298,7 @@ export default function DoctorClinicPage() {
       setPrescriptionErr(e?.message ?? "حدث خطأ غير متوقع أثناء حفظ الوصفة.");
       setPrescriptionSaving(false);
     }
-  }, [
-    selectedRow,
-    prescriptionText,
-    currentPatientBasicName,
-    patientExtra,
-  ]);
+  }, [selectedRow, prescriptionText, currentPatientBasicName, patientExtra]);
 
   useEffect(() => {
     let alive = true;
@@ -460,20 +444,18 @@ export default function DoctorClinicPage() {
     [queueRows, loadPatientFiles, loadPatientVitals, loadPatientExtra]
   );
 
-  const displayName =
-    (profile?.full_name ?? "").trim() || "عيادة الطبيب";
+  const displayName = (profile?.full_name ?? "").trim() || "عيادة الطبيب";
 
   const roomDisabledByAdmin = useMemo(() => {
     if (!flags) return false;
     return !flags.live_video_enabled && !flags.live_audio_enabled;
   }, [flags]);
 
-  const chatDisabled =
-    !flags || !flags.live_chat_enabled || !selectedRow;
+  const chatDisabled = !flags || !flags.live_chat_enabled || !selectedRow;
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-40 bg-slate-950 text-slate-100 flex items-center justify-center">
+      <div className="fixed inset-0 z-[9999] bg-slate-950 text-slate-100 flex items-center justify-center">
         <div className="text-sm">جارٍ فتح غرفة العيادة…</div>
       </div>
     );
@@ -481,7 +463,7 @@ export default function DoctorClinicPage() {
 
   if (err && !isAdmin) {
     return (
-      <div className="fixed inset-0 z-40 bg-slate-950 text-slate-100 flex items-center justify-center px-4">
+      <div className="fixed inset-0 z-[9999] bg-slate-950 text-slate-100 flex items-center justify-center px-4">
         <div className="max-w-md w-full rounded-2xl border border-red-900/60 bg-red-950/40 p-4 text-sm text-red-100 space-y-3">
           <div className="font-bold text-base">لا يمكن فتح غرفة العيادة</div>
           <div>{err}</div>
@@ -508,7 +490,7 @@ export default function DoctorClinicPage() {
 
   if (roomDisabledByAdmin) {
     return (
-      <div className="fixed inset-0 z-40 bg-slate-950 text-slate-100 flex items-center justify-center px-4">
+      <div className="fixed inset-0 z-[9999] bg-slate-950 text-slate-100 flex items-center justify-center px-4">
         <div className="max-w-md w-full rounded-2xl border border-slate-800 bg-slate-950/90 p-4 text-sm text-slate-100 space-y-2">
           <div className="font-bold text-base">
             تم إيقاف غرفة العيادة من الإدارة
@@ -526,11 +508,13 @@ export default function DoctorClinicPage() {
   }
 
   return (
-    <div className="fixed inset-0 z-40 bg-slate-950 text-slate-100">
+    // ✅ أهم تعديل: الصفحة نفسها هي اللي تسوي scroll حتى لو الـ layout مانع
+    <div className="fixed inset-0 z-[9999] bg-slate-950 text-slate-100 overflow-y-auto overscroll-contain">
       <div className="pointer-events-none absolute inset-0 bg-black/40" />
 
-      <div className="relative flex flex-col min-h-screen">
-        <header className="flex items-center justify-between px-4 sm:px-8 py-4 border-b border-slate-800 bg-slate-950/90">
+      <div className="relative flex flex-col min-h-[100dvh]">
+        {/* ✅ sticky عشان يبقى فوق أثناء النزول */}
+        <header className="sticky top-0 z-10 flex items-center justify-between px-4 sm:px-8 py-4 border-b border-slate-800 bg-slate-950/90">
           <button
             type="button"
             onClick={() => router.back()}
@@ -566,17 +550,12 @@ export default function DoctorClinicPage() {
           </button>
         </header>
 
-        <main className="flex-1 relative pb-10">
-          <div className="absolute inset-0 p-2 sm:p-4">
-            <div className="grid h-full gap-3 sm:gap-4 md:grid-cols-[minmax(0,1.8fr)_minmax(0,3fr)_minmax(0,1.6fr)]">
+        {/* ✅ زودنا padding-bottom عشان لو فيه شريط سفلي من AppShell ما يغطي آخر الصفحة */}
+        <main className="flex-1 relative pb-24">
+          <div className="p-2 sm:p-4">
+            <div className="grid gap-3 sm:gap-4 md:grid-cols-[minmax(0,1.8fr)_minmax(0,3fr)_minmax(0,1.6fr)]">
               {/* قائمة الانتظار */}
               <section className="relative rounded-2xl border border-emerald-500/50 bg-slate-900/95 flex flex-col overflow-hidden">
-                <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10">
-                  <span className="inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-emerald-500 text-slate-900 text-xs font-extrabold">
-                    1
-                  </span>
-                </div>
-
                 <header className="px-4 py-2 border-b border-slate-800 bg-slate-950/80 text-[11px] sm:text-xs">
                   <div className="font-semibold text-slate-100">
                     المرضى في قائمة الانتظار
@@ -595,7 +574,7 @@ export default function DoctorClinicPage() {
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 text-[11px] sm:text-xs text-slate-300">
+                <div className="max-h-[40vh] md:max-h-none flex-1 overflow-y-auto px-4 py-3 space-y-2 text-[11px] sm:text-xs text-slate-300">
                   {queueRows.length === 0 ? (
                     <div className="text-slate-500 text-center">
                       هنا ستظهر قائمة المرضى مثل قائمة المشاركين.
@@ -634,12 +613,10 @@ export default function DoctorClinicPage() {
                             </div>
                             <div className="text-[10px] text-slate-400">
                               {q.requested_at
-                                ? new Date(
-                                    q.requested_at
-                                  ).toLocaleTimeString("ar-SA", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })
+                                ? new Date(q.requested_at).toLocaleTimeString(
+                                    "ar-SA",
+                                    { hour: "2-digit", minute: "2-digit" }
+                                  )
                                 : ""}
                             </div>
                           </div>
@@ -661,14 +638,8 @@ export default function DoctorClinicPage() {
               </section>
 
               {/* الوسط: البث + الشات */}
-              <div className="flex flex-col h-full gap-3 sm:gap-4">
-                <section className="relative flex-1 rounded-[24px] border border-emerald-500/70 bg-slate-900/95 shadow-[0_0_45px_rgba(16,185,129,0.4)] flex flex-col overflow-hidden">
-                  <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10">
-                    <span className="inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-emerald-500 text-slate-900 text-xs font-extrabold">
-                      4
-                    </span>
-                  </div>
-
+              <div className="flex flex-col gap-3 sm:gap-4">
+                <section className="relative rounded-[24px] border border-emerald-500/70 bg-slate-900/95 shadow-[0_0_45px_rgba(16,185,129,0.4)] flex flex-col overflow-hidden">
                   <header className="px-4 py-2 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between text-[11px] sm:text-xs">
                     <div className="inline-flex items-center gap-2">
                       <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -698,7 +669,7 @@ export default function DoctorClinicPage() {
                     </div>
                   </header>
 
-                  <div className="flex-1 grid place-items-center px-4 py-3">
+                  <div className="grid place-items-center px-4 py-3">
                     <div className="space-y-4 text-center">
                       <div className="mx-auto h-40 w-full max-w-md rounded-3xl border-2 border-emerald-400/70 bg-slate-800/80 grid place-items-center">
                         هنا تظهر صورة / فيديو الطبيب
@@ -740,7 +711,6 @@ export default function DoctorClinicPage() {
                     </div>
                   </div>
 
-                  {/* الشات للطبيب */}
                   <div className="px-4 pb-4">
                     <ConsultationChat
                       queueId={selectedRow?.id ?? null}
@@ -753,19 +723,13 @@ export default function DoctorClinicPage() {
 
               {/* ملفات وبيانات المريض */}
               <section className="relative rounded-2xl border border-slate-700 bg-slate-900/95 flex flex-col overflow-hidden">
-                <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10">
-                  <span className="inline-flex h-6 min-w-[1.5rem] items-center justifycenter rounded-full bg-emerald-500 text-slate-900 text-xs font-extrabold">
-                    3
-                  </span>
-                </div>
-
                 <header className="px-4 py-2 border-b border-slate-800 bg-slate-950/80 text-[11px] sm:text-xs">
                   <div className="font-semibold text-slate-100">
                     ملفات وبيانات المريض
                   </div>
                 </header>
 
-                <div className="flex-1 overflow-y-auto px-4 py-3 text-[11px] sm:text-xs space-y-3">
+                <div className="max-h-[60vh] md:max-h-none flex-1 overflow-y-auto px-4 py-3 text-[11px] sm:text-xs space-y-3">
                   {/* بيانات أساسية */}
                   <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-3 space-y-1">
                     <div className="font-semibold text-slate-100 mb-1">
@@ -854,17 +818,14 @@ export default function DoctorClinicPage() {
                                 <div className="flex-1 min-w-0">
                                   <div className="truncate">
                                     {v.vital_type}: {mainValue}
-                                    {extraValue}{" "}
-                                    {v.unit ? v.unit : ""}
+                                    {extraValue} {v.unit ? v.unit : ""}
                                   </div>
                                   {v.recorded_at && (
                                     <div className="text-[10px] text-slate-500">
-                                      {new Date(
-                                        v.recorded_at
-                                      ).toLocaleString("ar-SA", {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      })}
+                                      {new Date(v.recorded_at).toLocaleString(
+                                        "ar-SA",
+                                        { hour: "2-digit", minute: "2-digit" }
+                                      )}
                                     </div>
                                   )}
                                 </div>
@@ -915,8 +876,7 @@ export default function DoctorClinicPage() {
                         <ul className="space-y-1">
                           {patientFiles.slice(0, 20).map((f) => {
                             const name =
-                              f.storage_path.split("/").pop() ||
-                              f.storage_path;
+                              f.storage_path.split("/").pop() || f.storage_path;
                             return (
                               <li
                                 key={f.id}
@@ -924,9 +884,7 @@ export default function DoctorClinicPage() {
                               >
                                 <div className="flex-1 min-w-0">
                                   <div className="truncate">
-                                    {f.file_type
-                                      ? `[${f.file_type}] `
-                                      : ""}
+                                    {f.file_type ? `[${f.file_type}] ` : ""}
                                     {name}
                                   </div>
                                   {f.consultation_id && (
@@ -957,9 +915,8 @@ export default function DoctorClinicPage() {
           </div>
         </main>
 
-        {/* مودال الوصفة */}
         {showPrescription && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 px-4">
             <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-950 p-4 space-y-3 text-sm">
               <div className="flex items-center justify-between">
                 <div className="font-bold text-slate-100 flex items-center gap-2">
@@ -991,8 +948,7 @@ export default function DoctorClinicPage() {
                   </div>
                 )}
                 <div className="text-[11px] text-slate-500">
-                  عند الضغط على "حفظ الوصفة" سيتم إرسالها كنص داخل الشات، بحيث
-                  يراها المريض ويمكنه تحميلها أو طباعتها.
+                  عند الضغط على "حفظ الوصفة" سيتم إرسالها كنص داخل الشات.
                 </div>
               </div>
 
@@ -1006,19 +962,20 @@ export default function DoctorClinicPage() {
                   onChange={(e) => setPrescriptionText(e.target.value)}
                   className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 outline-none resize-none"
                   placeholder={
-                    "مثال:\nأموكسيسيللين 500 ملغ كل 8 ساعات لمدة 5 أيام...\nمع تعليمات إضافية إن وجدت."
+                    "مثال:\nأموكسيسيللين 500 ملغ كل 8 ساعات لمدة 5 أيام..."
                   }
                 />
               </div>
 
               {prescriptionErr && (
-                <div className="text-[11px] text-red-300">{prescriptionErr}</div>
+                <div className="text-[11px] text-red-300">
+                  {prescriptionErr}
+                </div>
               )}
 
               <div className="flex items-center justify-between gap-2 pt-1">
                 <div className="text-[10px] text-slate-500">
-                  لا يتم إنشاء جداول جديدة، فقط يتم إرسال الوصفة كنص في جدول{" "}
-                  <code>consultation_messages</code>.
+                  سيتم إرسالها كنص داخل <code>consultation_messages</code>.
                 </div>
                 <button
                   type="button"

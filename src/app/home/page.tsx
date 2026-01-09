@@ -241,7 +241,10 @@ function SidebarMock({ onOpenComposer }: { onOpenComposer: () => void }) {
         onClick={() => router.push("/category")} // ⬅️ الزر الجديد
       />
 
-      <SidebarButton icon={<Stethoscope className="h-5 w-5" />} label="الأطباء" />
+      <SidebarButton
+        icon={<Stethoscope className="h-5 w-5" />}
+        label="الأطباء"
+      />
 
       {/* ✅ زر المكتبة جنب بقية الأزرار بدون تغيير أي تصميم آخر */}
       <SidebarButton
@@ -298,7 +301,8 @@ function SidebarMock({ onOpenComposer }: { onOpenComposer: () => void }) {
             </button>
 
             {menuOpen && (
-              <div className="absolute end-0 bottom-full mb-2 w-44 rounded-2xl border bg-white shadow-lg overflow-hidden">
+              // ✅ التعديل الوحيد: text-slate-900 + z-50 (لتثبيت الأبيض وإلغاء الشفافية على بعض الجوالات)
+              <div className="absolute end-0 bottom-full mb-2 w-44 rounded-2xl border bg-white text-slate-900 shadow-lg overflow-hidden z-50">
                 {/* ملفي الشخصي -> /u/[username] */}
                 <button
                   type="button"
