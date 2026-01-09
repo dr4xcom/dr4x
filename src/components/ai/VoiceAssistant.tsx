@@ -168,14 +168,17 @@ export default function VoiceAssistant({
 
       // A) New endpoint
       try {
-        const sdpResp = await fetch("https://api.openai.com/v1/realtime/calls", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${key}`,
-            "Content-Type": "application/sdp",
-          },
-          body: offer.sdp || "",
-        });
+        const sdpResp = await fetch(
+          "https://api.openai.com/v1/realtime/calls",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${key}`,
+              "Content-Type": "application/sdp",
+            },
+            body: offer.sdp || "",
+          }
+        );
 
         answerSdp = await sdpResp.text();
         ok = sdpResp.ok;
@@ -191,7 +194,9 @@ export default function VoiceAssistant({
       // B) Fallback endpoint (القديم)
       if (!ok) {
         const sdpResp2 = await fetch(
-          `https://api.openai.com/v1/realtime?model=${encodeURIComponent(model)}`,
+          `https://api.openai.com/v1/realtime?model=${encodeURIComponent(
+            model
+          )}`,
           {
             method: "POST",
             headers: {
@@ -260,11 +265,42 @@ export default function VoiceAssistant({
           className={[
             "inline-flex items-center gap-2 select-none",
             "text-slate-700 hover:text-slate-900 transition",
+            "rounded-md px-3 py-2",
+            "animate-[dr4xPulse_0.45s_linear_infinite]",
           ].join(" ")}
+          style={{
+            borderWidth: 2,
+            borderStyle: "solid",
+            borderColor: "transparent",
+            backgroundClip: "padding-box",
+          }}
           title={isOn ? "إيقاف المساعد" : "ابدأ المساعد الصوتي"}
         >
-          {isOn ? <Square className="h-5 w-5" /> : <Stethoscope className="h-5 w-5" />}
-          <span className="text-sm font-semibold">{isOn ? "إيقاف" : "ابدأ"}</span>
+          <style jsx>{`
+            @keyframes dr4xPulse {
+              0% {
+                border-color: #ef4444;
+              }
+              33% {
+                border-color: #fde047;
+              }
+              66% {
+                border-color: #22c55e;
+              }
+              100% {
+                border-color: #ef4444;
+              }
+            }
+          `}</style>
+
+          {isOn ? (
+            <Square className="h-5 w-5" />
+          ) : (
+            <Stethoscope className="h-5 w-5" />
+          )}
+          <span className="text-sm font-semibold">
+            {isOn ? "إيقاف" : "ابدأ"}
+          </span>
         </button>
 
         <button
@@ -308,8 +344,35 @@ export default function VoiceAssistant({
           <button
             type="button"
             onClick={isOn ? stop : start}
-            className="rounded-full px-4 py-2 text-sm font-semibold bg-slate-900 text-white"
+            className={[
+              "px-4 py-2 text-sm font-semibold",
+              "rounded-md",
+              "bg-slate-900 text-white",
+              "animate-[dr4xPulse_0.45s_linear_infinite]",
+            ].join(" ")}
+            style={{
+              borderWidth: 2,
+              borderStyle: "solid",
+              borderColor: "transparent",
+              backgroundClip: "padding-box",
+            }}
           >
+            <style jsx>{`
+              @keyframes dr4xPulse {
+                0% {
+                  border-color: #ef4444;
+                }
+                33% {
+                  border-color: #fde047;
+                }
+                66% {
+                  border-color: #22c55e;
+                }
+                100% {
+                  border-color: #ef4444;
+                }
+              }
+            `}</style>
             {isOn ? "إيقاف" : "ابدأ"}
           </button>
 
