@@ -9,7 +9,6 @@ type PostRow = {
   author_id?: string | null;
   content?: string | null;
   created_at?: string | null;
-  pinned_at?: string | null; // ✅ جديد: حالة التثبيت
 };
 
 type ProfileRow = {
@@ -29,14 +28,15 @@ export default function AdminPostsPage() {
   const [err, setErr] = useState<string | null>(null);
 
   const [posts, setPosts] = useState<PostRow[]>([]);
-  const [profilesMap, setProfilesMap] = useState<Record<string, ProfileRow>>(
-    {}
-  );
+  const [profilesMap, setProfilesMap] = useState<Record<string, ProfileRow>>({});
 
   const [q, setQ] = useState("");
 
   const PAGE_SIZE = 60;
   const [page, setPage] = useState(0);
+
+  // 🗑️ حالة الحذف
+  const [deletingId, setDeletingId] = useState<string | number | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -49,10 +49,10 @@ export default function AdminPostsPage() {
         const from = page * PAGE_SIZE;
         const to = from + PAGE_SIZE - 1;
 
-        // ✅ إضافة pinned_at للاستعلام
+        // ✅ مطابق لجدول posts عندك: author_id + content + created_at
         const { data, error } = await supabase
           .from("posts")
-          .select("id,author_id,content,created_at,pinned_at")
+          .select("id,author_id,content,created_at")
           .order("created_at", { ascending: false })
           .range(from, to);
 
@@ -123,67 +123,33 @@ export default function AdminPostsPage() {
     });
   }, [q, posts, profilesMap]);
 
-  async function handleDeletePost(id: string | number) {
-    const pid = String(id);
-
-    const ok = window.confirm("هل أنت متأكد من حذف هذه التغريدة بشكل نهائي؟");
-    if (!ok) return;
-
+  // 🗑️ حذف تغريدة واحدة (للمشرف فقط حسب RLS عندك)
+  async function handleDeletePost(postId: string | number) {
     try {
-      const res = await fetch(`/api/posts/${pid}/delete`, {
-        method: "DELETE",
-      });
-      const body = await res.json().catch(() => ({} as any));
+      setErr(null);
 
-      if (!res.ok) {
-        alert(body?.error ?? "فشل حذف التغريدة من الخادم.");
-        return;
-      }
+      const ok = window.confirm(
+        `هل أنت متأكد من حذف التغريدة رقم ${postId}؟\nسيتم إزالتها نهائياً من الجدول posts.`
+      );
+      if (!ok) return;
 
-      // نحذفها من الواجهة بدون إعادة تحميل الصفحة
-      setPosts((prev) => prev.filter((p) => String(p.id) !== pid));
-    } catch (e: any) {
-      alert(e?.message ?? "حدث خطأ غير متوقع أثناء الحذف.");
-    }
-  }
+      setDeletingId(postId);
 
-  // ✅ جديد: تثبيت / إلغاء تثبيت التغريدة
-  async function handleTogglePin(
-    id: string | number,
-    currentlyPinned: boolean
-  ) {
-    const ok = window.confirm(
-      currentlyPinned
-        ? "إلغاء تثبيت هذه التغريدة من الأعلى؟"
-        : "تثبيت هذه التغريدة في أعلى القائمة؟"
-    );
-    if (!ok) return;
-
-    const pidNum = Number(id);
-    const newPinnedAt = currentlyPinned ? null : new Date().toISOString();
-
-    try {
       const { error } = await supabase
         .from("posts")
-        .update({ pinned_at: newPinnedAt })
-        .eq("id", pidNum);
+        .delete()
+        .eq("id", postId);
 
       if (error) {
-        alert(
-          `فشل تغيير حالة التثبيت:\n${error.message}\n` +
-            "تأكد أن سياسات RLS تسمح للمدير بتعديل posts."
-        );
-        return;
+        throw error;
       }
 
-      // تحديث الحالة في الواجهة
-      setPosts((prev) =>
-        prev.map((p) =>
-          String(p.id) === String(id) ? { ...p, pinned_at: newPinnedAt } : p
-        )
-      );
+      // تحديث القائمة في الواجهة
+      setPosts((prev) => prev.filter((p) => p.id !== postId));
     } catch (e: any) {
-      alert(e?.message ?? "حدث خطأ غير متوقع أثناء التثبيت.");
+      setErr(e?.message ?? "فشل حذف التغريدة.");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -194,7 +160,7 @@ export default function AdminPostsPage() {
           <div className="text-xs text-slate-400">Admin</div>
           <h2 className="text-lg font-extrabold">التغريدات</h2>
           <div className="text-sm text-slate-300">
-            مراجعة التغريدات + بحث + حذف من لوحة التحكم (بدون تعديل DB/RLS).
+            مراجعة التغريدات + بحث + حذف من جدول posts فقط (بدون تعديل RLS).
           </div>
         </div>
 
@@ -231,7 +197,6 @@ export default function AdminPostsPage() {
         <div className="divide-y divide-slate-800">
           {filtered.map((p) => {
             const prof = p.author_id ? profilesMap[p.author_id] : null;
-            const isPinned = !!p.pinned_at;
 
             return (
               <div key={String(p.id)} className="p-4">
@@ -241,11 +206,6 @@ export default function AdminPostsPage() {
                       <div className="text-sm font-extrabold">
                         Post #{String(p.id)}
                       </div>
-                      {isPinned && (
-                        <span className="text-[11px] px-2 py-0.5 rounded-full border border-emerald-500 text-emerald-300">
-                          مثبّت
-                        </span>
-                      )}
                       <span className="text-xs text-slate-500 truncate">
                         by: {safeText(p.author_id)}
                       </span>
@@ -276,7 +236,9 @@ export default function AdminPostsPage() {
                     </div>
 
                     <div className="mt-3 rounded-xl border border-slate-800 bg-slate-950/40 p-3">
-                      <div className="text-xs text-slate-400 mb-1">المحتوى</div>
+                      <div className="text-xs text-slate-400 mb-1">
+                        المحتوى
+                      </div>
                       <div className="text-sm text-slate-100 whitespace-pre-wrap break-words">
                         {safeText(p.content)}
                       </div>
@@ -286,18 +248,16 @@ export default function AdminPostsPage() {
                   <div className="flex flex-wrap gap-2 justify-start lg:justify-end">
                     <button
                       type="button"
-                      onClick={() => handleTogglePin(p.id, isPinned)}
-                      className="rounded-xl border border-emerald-600 bg-emerald-900/20 px-3 py-2 text-sm font-semibold text-emerald-200 hover:bg-emerald-900/40 hover:border-emerald-400 transition"
-                    >
-                      {isPinned ? "إلغاء التثبيت" : "تثبيت في الأعلى"}
-                    </button>
-
-                    <button
-                      type="button"
                       onClick={() => handleDeletePost(p.id)}
-                      className="rounded-xl border border-red-700/70 bg-red-900/20 px-3 py-2 text-sm font-semibold text-red-200 hover:bg-red-900/40 hover:border-red-500 transition"
+                      disabled={deletingId === p.id}
+                      className={[
+                        "rounded-xl border px-3 py-2 text-sm font-semibold transition",
+                        deletingId === p.id
+                          ? "border-red-900 bg-red-950/40 text-red-300 cursor-wait"
+                          : "border-red-900/70 bg-red-950/40 text-red-200 hover:bg-red-900/40",
+                      ].join(" ")}
                     >
-                      حذف التغريدة
+                      {deletingId === p.id ? "جارٍ الحذف…" : "حذف التغريدة"}
                     </button>
                   </div>
                 </div>
@@ -308,8 +268,8 @@ export default function AdminPostsPage() {
 
         <div className="px-4 py-3 border-t border-slate-800 flex items-center justify-between">
           <div className="text-xs text-slate-400">
-            ملاحظة: الحذف يتم عبر API موجود مسبقًا (/api/posts/[id]/delete) بدون
-            تعديل على سياسات RLS.
+            ملاحظة: يتم الحذف من جدول posts فقط. إذا ظهرت رسالة خطأ، قد تكون من RLS
+            أو الصلاحيات.
           </div>
 
           <button

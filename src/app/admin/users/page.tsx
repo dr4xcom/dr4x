@@ -12,15 +12,67 @@ type ProfileRow = {
   whatsapp_number: string | null;
   is_doctor: boolean | null;
   created_at?: string | null;
-  // ✅ حقل الحظر الجديد من جدول profiles
-  is_banned: boolean | null;
+  avatar_path?: string | null;
+  is_banned?: boolean | null;
+  badge?: string | null; // ✅ نخزن نص
 };
 
 type RoleFilter = "all" | "patients" | "doctors";
 
+// ✅ قيم الشارات المعتمدة (حسب طلبك)
+type BadgeValue =
+  | ""
+  | "verified"
+  | "star1"
+  | "star2"
+  | "star3"
+  | "star1_verified"
+  | "star2_verified"
+  | "star3_verified";
+
 function safeText(v: any) {
   const s = typeof v === "string" ? v.trim() : "";
   return s.length ? s : "—";
+}
+
+async function callAdminApi(path: string, payload: any) {
+  const { data, error } = await supabase.auth.getSession();
+  if (error || !data?.session?.access_token) {
+    throw new Error("يرجى تسجيل الدخول من جديد (session مفقودة).");
+  }
+
+  const res = await fetch(path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${data.session.access_token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok || !json?.ok) {
+    throw new Error(json?.error || `HTTP ${res.status}`);
+  }
+  return json;
+}
+
+function badgeLabel(v: string | null | undefined) {
+  const b = (v ?? "").trim();
+  if (!b) return "بدون شارة";
+  if (b === "verified") return "شارة تويتر ✔";
+  if (b === "star1") return "نجمة ⭐";
+  if (b === "star2") return "نجمتين ⭐⭐";
+  if (b === "star3") return "ثلاث نجمات ⭐⭐⭐";
+  if (b === "star1_verified") return "نجمة ⭐ + تويتر ✔";
+  if (b === "star2_verified") return "⭐⭐ + تويتر ✔";
+  if (b === "star3_verified") return "⭐⭐⭐ + تويتر ✔";
+
+  // توافق خلفي لو عندك قيم قديمة
+  if (b === "vip") return "نجمة ⭐";
+  if (b === "vip_verified") return "نجمة ⭐ + تويتر ✔";
+
+  return b;
 }
 
 export default function AdminUsersPage() {
@@ -35,12 +87,48 @@ export default function AdminUsersPage() {
   const PAGE_SIZE = 80;
   const [page, setPage] = useState(0);
 
-  // ✅ اختياري: عداد إجمالي (لو RLS تسمح)
+  const [actionBusy, setActionBusy] = useState(false);
+
   const [totalCount, setTotalCount] = useState<number | null>(null);
 
-  // ✅ لمعرفة أي مستخدم يتم حظره/فك حظره الآن
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [moderatorsMap, setModeratorsMap] = useState<Record<string, boolean>>(
+    {}
+  );
 
+  /* =========================================
+     1) تحميل قائمة المشرفين
+     ========================================= */
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      try {
+        const res: any = await callAdminApi(
+          "/api/admin/users/moderators-list",
+          {}
+        );
+
+        if (!alive) return;
+
+        const map: Record<string, boolean> = {};
+        (res.uids ?? []).forEach((uid: string) => {
+          if (uid) map[String(uid)] = true;
+        });
+
+        setModeratorsMap(map);
+      } catch (e) {
+        console.error("Failed to load moderators list:", e);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  /* =========================================
+     2) تحميل المستخدمين من profiles
+     ========================================= */
   useEffect(() => {
     let alive = true;
 
@@ -56,7 +144,7 @@ export default function AdminUsersPage() {
           supabase
             .from("profiles")
             .select(
-              "id,username,full_name,email,whatsapp_number,is_doctor,created_at,is_banned",
+              "id,username,full_name,email,whatsapp_number,is_doctor,created_at,avatar_path,is_banned,badge",
               { count: "exact" }
             );
 
@@ -65,7 +153,6 @@ export default function AdminUsersPage() {
         if (role === "doctors") query = query.eq("is_doctor", true);
         if (role === "patients") query = query.eq("is_doctor", false);
 
-        // محاولة 1: ترتيب بالأحدث
         const attempt1 = await query
           .order("created_at", { ascending: false })
           .range(from, to);
@@ -82,7 +169,6 @@ export default function AdminUsersPage() {
           return;
         }
 
-        // محاولة 2 (fallback): بدون order(created_at)
         const attempt2Base = buildBase();
         let attempt2 = attempt2Base;
 
@@ -129,15 +215,13 @@ export default function AdminUsersPage() {
       const email = (p.email ?? "").toLowerCase();
       const wa = (p.whatsapp_number ?? "").toLowerCase();
       const roleTxt = p.is_doctor ? "doctor" : "patient";
-      const banTxt = p.is_banned ? "banned" : "active";
       return (
         id.includes(needle) ||
         user.includes(needle) ||
         full.includes(needle) ||
         email.includes(needle) ||
         wa.includes(needle) ||
-        roleTxt.includes(needle) ||
-        banTxt.includes(needle)
+        roleTxt.includes(needle)
       );
     });
   }, [q, profiles]);
@@ -151,37 +235,109 @@ export default function AdminUsersPage() {
     setRole(next);
   }
 
-  // ✅ زر الحظر / إلغاء الحظر
-  async function toggleBan(p: ProfileRow) {
-    if (!p.id) return;
-    const next = !p.is_banned;
+  async function handleDelete(uid: string) {
+    if (!uid) return alert("لم يتم التعرف على رقم المستخدم (uid).");
 
     const ok = window.confirm(
-      next
-        ? `هل أنت متأكد من حظر هذا العضو؟\nلن يستطيع النشر أو استخدام النظام حسب ما نطبّقه في الكود.`
-        : `هل تريد إلغاء الحظر عن هذا العضو؟`
+      "هل أنت متأكد أنك تريد حذف هذا المستخدم نهائيًا من قاعدة البيانات و Supabase Auth؟ هذا الإجراء لا يمكن التراجع عنه."
     );
     if (!ok) return;
 
     try {
-      setErr(null);
-      setBusyId(p.id);
-
-      const { error } = await supabase
-        .from("profiles")
-        .update({ is_banned: next })
-        .eq("id", p.id);
-
-      if (error) throw error;
-
-      // تحديث الحالة محليًا
-      setProfiles((prev) =>
-        prev.map((row) => (row.id === p.id ? { ...row, is_banned: next } : row))
-      );
+      setActionBusy(true);
+      await callAdminApi("/api/admin/users/delete", { uid });
+      setProfiles((prev) => prev.filter((p) => p.id !== uid));
+      setModeratorsMap((prev) => {
+        const copy = { ...prev };
+        delete copy[uid];
+        return copy;
+      });
+      alert("تم حذف المستخدم نهائيًا.");
     } catch (e: any) {
-      setErr(e?.message ?? "تعذر تحديث حالة الحظر لهذا المستخدم.");
+      alert("فشل حذف المستخدم: " + (e?.message || ""));
     } finally {
-      setBusyId(null);
+      setActionBusy(false);
+    }
+  }
+
+  async function handleToggleBan(uid: string, current: boolean | null) {
+    const banned = !current;
+    const ok = window.confirm(
+      banned ? "هل تريد حظر هذا المستخدم؟" : "هل تريد إلغاء الحظر عن هذا المستخدم؟"
+    );
+    if (!ok) return;
+
+    try {
+      setActionBusy(true);
+      await callAdminApi("/api/admin/users/ban", { uid, banned });
+      setProfiles((prev) =>
+        prev.map((p) => (p.id === uid ? { ...p, is_banned: banned } : p))
+      );
+      alert(banned ? "تم حظر المستخدم." : "تم إلغاء الحظر عن المستخدم.");
+    } catch (e: any) {
+      alert("فشل تغيير حالة الحظر: " + (e?.message || ""));
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function handleToggleModerator(uid: string) {
+    if (!uid) return;
+
+    const currentlyModerator = !!moderatorsMap[uid];
+    const makeModerator = !currentlyModerator;
+
+    const ok = window.confirm(
+      makeModerator
+        ? "هل تريد تعيين هذا المستخدم كمشرف؟ سيتمكن من حذف/إدارة التغريدات."
+        : "هل تريد إلغاء الإشراف عن هذا المستخدم؟"
+    );
+    if (!ok) return;
+
+    try {
+      setActionBusy(true);
+      await callAdminApi("/api/admin/users/moderator", {
+        uid,
+        moderator: makeModerator,
+      });
+
+      setModeratorsMap((prev) => ({
+        ...prev,
+        [uid]: makeModerator,
+      }));
+
+      alert(makeModerator ? "تم تعيين المستخدم مشرفًا." : "تم إلغاء الإشراف.");
+    } catch (e: any) {
+      alert("فشل تغيير حالة الإشراف: " + (e?.message || ""));
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function handleChangeBadge(uid: string, badge: BadgeValue) {
+    const badgeValue = badge === "" ? null : badge;
+
+    const label = badgeLabel(badgeValue);
+
+    const ok = window.confirm(`هل تريد تعيين: ${label} ؟`);
+    if (!ok) return;
+
+    try {
+      setActionBusy(true);
+      await callAdminApi("/api/admin/users/badge", {
+        uid,
+        badge: badgeValue,
+      });
+
+      setProfiles((prev) =>
+        prev.map((p) => (p.id === uid ? { ...p, badge: badgeValue } : p))
+      );
+
+      alert(`تم تعيين: ${label}`);
+    } catch (e: any) {
+      alert("فشل تغيير الشارة: " + (e?.message || ""));
+    } finally {
+      setActionBusy(false);
     }
   }
 
@@ -192,7 +348,8 @@ export default function AdminUsersPage() {
           <div className="text-xs text-slate-400">Admin</div>
           <h2 className="text-lg font-extrabold">المستخدمون</h2>
           <div className="text-sm text-slate-300">
-            عرض المستخدمين من جدول profiles + بحث/فلترة + حظر / إلغاء حظر.
+            عرض المستخدمين من جدول profiles + بحث/فلترة (مع حذف/حظر وتعيين مشرفين
+            وشارات).
           </div>
         </div>
 
@@ -229,6 +386,7 @@ export default function AdminUsersPage() {
             المعروض: {filtered.length}
             {typeof totalCount === "number" ? ` / الإجمالي: ${totalCount}` : ""}
             {loading ? " • جارٍ التحميل…" : ""}
+            {actionBusy ? " • جارٍ تنفيذ أمر إداري…" : ""}
           </div>
         </div>
 
@@ -243,7 +401,9 @@ export default function AdminUsersPage() {
         <div className="divide-y divide-slate-800">
           {filtered.map((p) => {
             const banned = !!p.is_banned;
-            const isBusy = busyId === p.id;
+            const isModerator = !!moderatorsMap[p.id];
+
+            const badgeValue = ((p.badge ?? "") as BadgeValue) || "";
 
             return (
               <div key={p.id} className="p-4">
@@ -265,16 +425,23 @@ export default function AdminUsersPage() {
                         {p.is_doctor ? "طبيب" : "مريض"}
                       </span>
 
-                      <span
-                        className={[
-                          "text-xs font-bold rounded-full px-2 py-1 border",
-                          banned
-                            ? "border-red-900/60 bg-red-950/40 text-red-200"
-                            : "border-emerald-900/60 bg-emerald-950/40 text-emerald-200",
-                        ].join(" ")}
-                      >
-                        {banned ? "محظور" : "نشط"}
-                      </span>
+                      {isModerator ? (
+                        <span className="text-xs font-bold rounded-full px-2 py-1 border border-emerald-900/60 bg-emerald-950/40 text-emerald-200">
+                          مشرف
+                        </span>
+                      ) : null}
+
+                      {badgeValue ? (
+                        <span className="text-xs font-bold rounded-full px-2 py-1 border border-slate-700 bg-slate-900/40 text-slate-100">
+                          {badgeLabel(badgeValue)}
+                        </span>
+                      ) : null}
+
+                      {banned ? (
+                        <span className="text-xs font-bold rounded-full px-2 py-1 border border-red-900/60 bg-red-950/40 text-red-200">
+                          محظور
+                        </span>
+                      ) : null}
 
                       <span className="text-xs text-slate-500 truncate">
                         ID: {p.id}
@@ -284,15 +451,11 @@ export default function AdminUsersPage() {
                     <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-xs text-slate-300">
                       <div>
                         <span className="text-slate-500">Username:</span>{" "}
-                        <span className="font-semibold">
-                          {safeText(p.username)}
-                        </span>
+                        <span className="font-semibold">{safeText(p.username)}</span>
                       </div>
                       <div>
                         <span className="text-slate-500">Email:</span>{" "}
-                        <span className="font-semibold">
-                          {safeText(p.email)}
-                        </span>
+                        <span className="font-semibold">{safeText(p.email)}</span>
                       </div>
                       <div>
                         <span className="text-slate-500">WhatsApp:</span>{" "}
@@ -302,32 +465,79 @@ export default function AdminUsersPage() {
                       </div>
                       <div className="sm:col-span-2 lg:col-span-3">
                         <span className="text-slate-500">created_at:</span>{" "}
-                        <span className="font-semibold">
-                          {safeText(p.created_at)}
-                        </span>
+                        <span className="font-semibold">{safeText(p.created_at)}</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="flex flex-wrap gap-2 justify-start lg:justify-end">
-                    {/* ✅ زر الحظر / إلغاء الحظر فقط، بدون أي أزرار أخرى */}
+                    {/* ✅ تعيين الشارة */}
+                    <select
+                      value={badgeValue}
+                      onChange={(e) => handleChangeBadge(p.id, e.target.value as BadgeValue)}
+                      disabled={actionBusy}
+                      className="rounded-xl border border-slate-700 bg-slate-900/40 px-3 py-2 text-xs text-slate-100"
+                    >
+                      <option value="">بدون شارة</option>
+                      <option value="verified">شارة تويتر ✔</option>
+                      <option value="star1">نجمة ⭐</option>
+                      <option value="star2">نجمتين ⭐⭐</option>
+                      <option value="star3">ثلاث نجمات ⭐⭐⭐</option>
+                      <option value="star1_verified">نجمة ⭐ + تويتر ✔</option>
+                      <option value="star2_verified">⭐⭐ + تويتر ✔</option>
+                      <option value="star3_verified">⭐⭐⭐ + تويتر ✔</option>
+                    </select>
+
                     <button
                       type="button"
-                      onClick={() => toggleBan(p)}
-                      disabled={isBusy}
-                      className={[
-                        "rounded-xl px-3 py-2 text-sm font-semibold transition border",
-                        banned
-                          ? "border-emerald-900 bg-emerald-950/40 text-emerald-100 hover:bg-emerald-900/60"
-                          : "border-red-900 bg-red-950/40 text-red-100 hover:bg-red-900/60",
-                        isBusy ? "opacity-60 cursor-not-allowed" : "",
-                      ].join(" ")}
+                      onClick={() => handleDelete(p.id)}
+                      disabled={actionBusy}
+                      className="rounded-xl border border-red-900 bg-red-950/40 px-3 py-2 text-sm font-semibold text-red-100 hover:bg-red-900/40 disabled:opacity-60"
                     >
-                      {isBusy
-                        ? "جارٍ الحفظ…"
-                        : banned
-                        ? "إلغاء الحظر"
-                        : "حظر المستخدم"}
+                      حذف نهائي
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleToggleBan(p.id, p.is_banned ?? false)}
+                      disabled={actionBusy}
+                      className={`rounded-xl border px-3 py-2 text-sm font-semibold disabled:opacity-60 ${
+                        banned
+                          ? "border-emerald-900 bg-emerald-950/40 text-emerald-100 hover:bg-emerald-900/40"
+                          : "border-yellow-900 bg-yellow-950/40 text-yellow-100 hover:bg-yellow-900/40"
+                      }`}
+                    >
+                      {banned ? "إلغاء الحظر" : "حظر"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleToggleModerator(p.id)}
+                      disabled={actionBusy}
+                      className={`rounded-xl border px-3 py-2 text-sm font-semibold disabled:opacity-60 ${
+                        isModerator
+                          ? "border-emerald-900 bg-emerald-950/40 text-emerald-100 hover:bg-emerald-900/40"
+                          : "border-sky-900 bg-sky-950/40 text-sky-100 hover:bg-sky-900/40"
+                      }`}
+                    >
+                      {isModerator ? "إلغاء الإشراف" : "تعيين مشرف"}
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled
+                      className="rounded-xl border border-slate-700 bg-slate-900/40 px-3 py-2 text-sm font-semibold text-slate-400 cursor-not-allowed"
+                    >
+                      صورة (قريبًا)
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled
+                      className="rounded-xl border border-slate-900 bg-slate-950/40 px-3 py-2 text-sm font-semibold text-slate-600 cursor-not-allowed"
+                      title="لاحقًا: تعديل البيانات عبر RPC (إذا RLS تمنع UPDATE من العميل)"
+                    >
+                      تعديل (قريبًا)
                     </button>
                   </div>
                 </div>
@@ -338,9 +548,7 @@ export default function AdminUsersPage() {
 
         <div className="px-4 py-3 border-t border-slate-800 flex items-center justify-between">
           <div className="text-xs text-slate-400">
-            ملاحظة: زر الحظر يغير حقل <code>is_banned</code> في جدول{" "}
-            <code>profiles</code> فقط. تأثير الحظر على النشر أو الدخول يتم من
-            الكود في أماكن أخرى.
+            ملاحظة: هذه الصفحة للعرض + أوامر الإدارة (حذف / حظر / تعيين مشرف / شارات).
           </div>
 
           <button

@@ -168,7 +168,6 @@ export default function PostComposerModal({
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  // 🔒 لما المودال يفتح نوقف تمرير الخلفية
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -394,12 +393,10 @@ export default function PostComposerModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-2 sm:px-4">
-      {/* خلفية المودال */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="absolute inset-0" onClick={onClose} aria-hidden />
 
-      {/* ✅ هنا التعديل المهم: عرض مرن + ارتفاع مرن للجوال والكمبيوتر */}
-      <div className="relative w-full max-w-[750px] max-h-[90vh] dr4x-card bg-white overflow-hidden flex flex-col">
+      <div className="relative w-[750px] h-[450px] dr4x-card bg-white overflow-hidden flex flex-col">
         <div
           className="flex items-center justify-between px-4 py-3 border-b border-slate-200 shrink-0"
           dir="ltr"
@@ -423,7 +420,7 @@ export default function PostComposerModal({
         {children ? (
           <div className="min-h-0 overflow-y-auto">{children}</div>
         ) : (
-          <div className="flex-1 min-h-0 overflow-y-auto bg-white" dir="rtl">
+          <div className="min-h-0 overflow-y-auto bg-white" dir="rtl">
             <div className="p-4">
               <div className="flex items-start gap-3">
                 {profile.avatar_url ? (
@@ -495,7 +492,7 @@ export default function PostComposerModal({
                   ) : null}
 
                   {videoFile ? (
-                    <div className="mt-3 relative w-full max-w-[320px] h-[180px] rounded-xl overflow-hidden bg-black">
+                    <div className="mt-3 relative w-[320px] h-[180px] rounded-xl overflow-hidden bg-black">
                       <video
                         controls
                         src={videoPreview || ""}
@@ -536,7 +533,7 @@ export default function PostComposerModal({
                     </div>
 
                     {youtubeId ? (
-                      <div className="mt-3 w-full max-w-[320px] h-[180px] rounded-xl overflow-hidden bg-black">
+                      <div className="mt-3 w-[320px] h-[180px] rounded-xl overflow-hidden bg-black">
                         <iframe
                           className="w-full h-full"
                           src={`https://www.youtube.com/embed/${youtubeId}`}

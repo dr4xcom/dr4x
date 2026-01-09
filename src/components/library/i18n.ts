@@ -43,7 +43,6 @@ const dict = {
     banner: "بانر المكتبة",
     update: "تحديث",
     openCategory: "فتح القسم",
-    updateBanner: "تم تحديث بانر المكتبة",
   },
   en: {
     library: "Library",
@@ -87,7 +86,6 @@ const dict = {
     banner: "Library banner",
     update: "Update",
     openCategory: "Open category",
-    updateBanner: "Library banner updated",
   },
   tr: {
     library: "Kütüphane",
@@ -131,7 +129,6 @@ const dict = {
     banner: "Kütüphane afişi",
     update: "Güncelle",
     openCategory: "Kategoriyi aç",
-    updateBanner: "Kütüphane afişi güncellendi",
   },
 } as const;
 

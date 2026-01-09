@@ -226,9 +226,7 @@ export default function ProfileCenterPage() {
                   isBusy ? "opacity-60 cursor-not-allowed" : "",
                 ].join(" ")}
               >
-                {actionState === "uploading"
-                  ? "جارٍ رفع الصورة…"
-                  : "رفع صورة GIF"}
+                {actionState === "uploading" ? "جارٍ رفع الصورة…" : "رفع صورة GIF"}
               </button>
 
               <button

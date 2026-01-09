@@ -1,4 +1,3 @@
-// src/app/admin/departments/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -71,10 +70,7 @@ export default function AdminDepartmentsPage() {
         setLoading(false);
       } catch (e: any) {
         if (!alive) return;
-        setErr(
-          e?.message ??
-            "تعذر جلب الأقسام. (قد تكون صلاحيات RLS لا تسمح للأدمن)."
-        );
+        setErr(e?.message ?? "تعذر جلب الأقسام. (قد تكون صلاحيات RLS لا تسمح للأدمن).");
         setLoading(false);
       }
     })();
@@ -192,10 +188,7 @@ export default function AdminDepartmentsPage() {
         return;
       }
 
-      const { error } = await supabase
-        .from("departments")
-        .update(payload)
-        .eq("id", editId);
+      const { error } = await supabase.from("departments").update(payload).eq("id", editId);
       if (error) throw error;
 
       cancelEdit();
@@ -215,20 +208,13 @@ export default function AdminDepartmentsPage() {
       setErr(null);
       setDeletingId(id);
 
-      const linkedCount = specialties.filter(
-        (s) => s.department_id === id
-      ).length;
+      const linkedCount = specialties.filter((s) => s.department_id === id).length;
       if (linkedCount > 0) {
-        setErr(
-          `لا يمكن حذف القسم لأن هناك ${linkedCount} تخصص/تخصصات مرتبطة به. احذف/انقل التخصصات أولاً.`
-        );
+        setErr(`لا يمكن حذف القسم لأن هناك ${linkedCount} تخصص/تخصصات مرتبطة به. احذف/انقل التخصصات أولاً.`);
         return;
       }
 
-      const { error } = await supabase
-        .from("departments")
-        .delete()
-        .eq("id", id);
+      const { error } = await supabase.from("departments").delete().eq("id", id);
       if (error) throw error;
 
       await refresh();
@@ -242,29 +228,6 @@ export default function AdminDepartmentsPage() {
     }
   }
 
-  // 🔹 حـذف تخصص دقيق واحد من القسم
-  async function deleteSpecialty(id: number) {
-    try {
-      if (!window.confirm("هل أنت متأكد من حذف هذا التخصص الدقيق؟")) return;
-
-      setErr(null);
-
-      const { error } = await supabase
-        .from("specialties")
-        .delete()
-        .eq("id", id);
-      if (error) throw error;
-
-      // نحدّث الـ state مباشرة بدون ما نلمس الأقسام
-      setSpecialties((prev) => prev.filter((s) => s.id !== id));
-    } catch (e: any) {
-      setErr(
-        e?.message ??
-          "تعذر حذف التخصص الدقيق. (إذا RLS تمنع DELETE للأدمن، نحلها لاحقًا بـ RPC بأقل تعديل ممكن)."
-      );
-    }
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
@@ -272,8 +235,7 @@ export default function AdminDepartmentsPage() {
           <div className="text-xs text-slate-400">Admin</div>
           <h2 className="text-lg font-extrabold">الأقسام</h2>
           <div className="text-sm text-slate-300">
-            إدارة الأقسام (إضافة/تعديل/حذف) + عرض التخصصات المرتبطة — بدون أي
-            تعديل DB/RLS.
+            إدارة الأقسام (إضافة/تعديل/حذف) + عرض التخصصات المرتبطة — بدون أي تعديل DB/RLS.
           </div>
         </div>
 
@@ -286,9 +248,7 @@ export default function AdminDepartmentsPage() {
       </div>
 
       {err ? (
-        <div className="rounded-2xl border border-red-900/60 bg-red-950/40 p-4 text-sm text-red-200">
-          {err}
-        </div>
+        <div className="rounded-2xl border border-red-900/60 bg-red-950/40 p-4 text-sm text-red-200">{err}</div>
       ) : null}
 
       {/* Add */}
@@ -344,17 +304,11 @@ export default function AdminDepartmentsPage() {
       <div className="rounded-2xl border border-slate-800 bg-slate-950/40 overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
           <div className="text-sm font-semibold">قائمة الأقسام</div>
-          <div className="text-xs text-slate-400">
-            {loading ? "جارٍ التحميل…" : `العدد: ${filtered.length}`}
-          </div>
+          <div className="text-xs text-slate-400">{loading ? "جارٍ التحميل…" : `العدد: ${filtered.length}`}</div>
         </div>
 
-        {loading && departments.length === 0 ? (
-          <div className="p-4 text-sm text-slate-300">جارٍ جلب الأقسام…</div>
-        ) : null}
-        {!loading && filtered.length === 0 ? (
-          <div className="p-4 text-sm text-slate-300">لا توجد أقسام.</div>
-        ) : null}
+        {loading && departments.length === 0 ? <div className="p-4 text-sm text-slate-300">جارٍ جلب الأقسام…</div> : null}
+        {!loading && filtered.length === 0 ? <div className="p-4 text-sm text-slate-300">لا توجد أقسام.</div> : null}
 
         <div className="divide-y divide-slate-800">
           {filtered.map((d) => {
@@ -378,15 +332,11 @@ export default function AdminDepartmentsPage() {
                       <div className="mt-2 text-sm text-slate-200">
                         <div>
                           <span className="text-slate-500">AR:</span>{" "}
-                          <span className="font-semibold">
-                            {safeText(d.name_ar)}
-                          </span>
+                          <span className="font-semibold">{safeText(d.name_ar)}</span>
                         </div>
                         <div>
                           <span className="text-slate-500">EN:</span>{" "}
-                          <span className="font-semibold">
-                            {safeText(d.name_en)}
-                          </span>
+                          <span className="font-semibold">{safeText(d.name_en)}</span>
                         </div>
                       </div>
                     ) : (
@@ -411,29 +361,16 @@ export default function AdminDepartmentsPage() {
                         <div className="mb-1">التخصصات المرتبطة:</div>
                         <div className="flex flex-wrap gap-2">
                           {linked.slice(0, 12).map((s) => (
-                            <button
+                            <span
                               key={s.id}
-                              type="button"
-                              onClick={() => deleteSpecialty(s.id)}
-                              className="flex items-center gap-2 rounded-full border border-slate-800 bg-slate-950/40 px-2 py-1 text-slate-200 hover:bg-slate-900/70 transition"
-                              title={`حذف التخصص الدقيق #${s.id}`}
+                              className="rounded-full border border-slate-800 bg-slate-950/40 px-2 py-1 text-slate-200"
+                              title={`Specialty #${s.id}`}
                             >
-                              <span>
-                                {safeText(s.name_ar) !== "—"
-                                  ? safeText(s.name_ar)
-                                  : safeText(s.name_en)}
-                              </span>
+                              {safeText(s.name_ar) !== "—" ? safeText(s.name_ar) : safeText(s.name_en)}{" "}
                               <span className="text-slate-500">#{s.id}</span>
-                              <span className="text-[10px] text-red-300 font-bold">
-                                ✕
-                              </span>
-                            </button>
-                          ))}
-                          {linked.length > 12 ? (
-                            <span className="text-slate-500">
-                              +{linked.length - 12} أخرى
                             </span>
-                          ) : null}
+                          ))}
+                          {linked.length > 12 ? <span className="text-slate-500">+{linked.length - 12} أخرى</span> : null}
                         </div>
                       </div>
                     ) : null}
@@ -498,8 +435,7 @@ export default function AdminDepartmentsPage() {
         </div>
 
         <div className="px-4 py-3 border-t border-slate-800 text-xs text-slate-400">
-          ملاحظة: عمليات (إضافة/تعديل/حذف) قد تفشل إذا سياسات RLS لا تسمح
-          للأدمن. وقتها نثبت ذلك ثم نستخدم RPC بأقل تعديل ممكن.
+          ملاحظة: عمليات (إضافة/تعديل/حذف) قد تفشل إذا سياسات RLS لا تسمح للأدمن. وقتها نثبت ذلك ثم نستخدم RPC بأقل تعديل ممكن.
         </div>
       </div>
     </div>

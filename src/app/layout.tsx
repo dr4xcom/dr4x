@@ -7,18 +7,14 @@ export const metadata: Metadata = {
   title: "DR4X",
   description: "Healthcare Social Platform",
   manifest: "/manifest.json",
-  themeColor: "#10b981",
   icons: {
     apple: "/icons/icon-192.png",
   },
 };
 
-// ✅ مهم جداً للجوال: يضبط مقاس الصفحة والتكبير
+// ✅ Next.js 16: themeColor لازم يكون هنا بدل metadata
 export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  viewportFit: "cover",
+  themeColor: "#10b981",
 };
 
 type Locale = "ar" | "en" | "tr";
@@ -45,10 +41,7 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} dir={dir} suppressHydrationWarning>
-      {/* ✅ استبدلنا min-h-dvh بـ min-h-screen لأجل الجوال */}
-      <body className="min-h-screen bg-slate-50 text-slate-900">
-        {children}
-      </body>
+      <body className="min-h-dvh bg-slate-50 text-slate-900">{children}</body>
     </html>
   );
 }

@@ -1,32 +1,14 @@
 @import "tailwindcss";
 
 /* =========================
-   HTML / BODY RESET
-   ========================= */
-html,
-body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
-  overflow-y: auto;
-}
-
-img,
-video {
-  max-width: 100%;
-  height: auto;
-}
-
-/* =========================
-   Root Theme
+   Root Theme Variables
    ========================= */
 :root {
   --background: #ffffff;
   --foreground: #171717;
 }
 
+/* ربط المتغيرات مع Tailwind (App Router / Next 16) */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -34,6 +16,9 @@ video {
   --font-mono: var(--font-geist-mono);
 }
 
+/* =========================
+   Dark Mode
+   ========================= */
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
@@ -41,6 +26,9 @@ video {
   }
 }
 
+/* =========================
+   Base Body Styles
+   ========================= */
 body {
   background: var(--background);
   color: var(--foreground);
@@ -48,11 +36,19 @@ body {
   min-height: 100dvh;
 }
 
-html[dir="rtl"] body,
+/* =========================
+   RTL / LTR FOUNDATION
+   ========================= */
+html[dir="rtl"] body {
+  text-align: start;
+}
 html[dir="ltr"] body {
   text-align: start;
 }
 
+/* =========================
+   Reusable UI Helpers
+   ========================= */
 .dr4x-card {
   @apply rounded-2xl border border-slate-200 bg-white;
 }
@@ -62,25 +58,19 @@ html[dir="ltr"] body {
   word-break: break-word;
 }
 
+/* =========================
+   DR4X Shell (Twitter Arabic order)
+   RTL: [Sidebar][Feed][Panel]  (يمين -> يسار)
+   LTR: [Sidebar][Feed][Panel]  (يسار -> يمين)
+   ========================= */
+
 .dr4x-shell {
   display: grid;
   grid-template-columns: 1fr;
   gap: 1rem;
 }
 
-@media (max-width: 767px) {
-  .dr4x-shell {
-    padding-inline: 0.75rem;
-  }
-
-  .dr4x-col-sidebar,
-  .dr4x-col-feed,
-  .dr4x-col-panel {
-    width: 100%;
-    max-width: 100%;
-  }
-}
-
+/* Desktop sizes like Twitter */
 @media (min-width: 768px) {
   .dr4x-shell {
     display: flex;
@@ -88,93 +78,43 @@ html[dir="ltr"] body {
     gap: 1rem;
   }
 
+  /* Sidebar = ثابت مثل تويتر */
   .dr4x-col-sidebar {
     width: 280px;
     flex: 0 0 280px;
   }
 
+  /* Feed = أعرض ومركز */
   .dr4x-col-feed {
     flex: 1 1 auto;
     min-width: 0;
-    max-width: 620px;
+    max-width: 620px; /* قريب جدًا من Twitter */
   }
 
+  /* Panel = متوسط */
   .dr4x-col-panel {
     width: 320px;
     flex: 0 0 320px;
   }
 
-  html[dir="rtl"] .dr4x-shell,
+  /* ترتيب الأعمدة لا نغيّره هنا
+     لأن ترتيب JSX هو: Sidebar ثم Feed ثم Panel
+     وdir يحدد بداية العرض تلقائيًا */
+  html[dir="rtl"] .dr4x-shell {
+    flex-direction: row;
+  }
   html[dir="ltr"] .dr4x-shell {
     flex-direction: row;
   }
 }
-
+/* إخفاء شريط التمرير (Scrollbar) داخل العمود الأوسط فقط */
 .dr4x-no-scrollbar {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge القديم */
 }
+
 .dr4x-no-scrollbar::-webkit-scrollbar {
   width: 0;
   height: 0;
-  display: none;
-}
-
-/* =========================
-   🚨 POLICE LIGHT EFFECT
-   ========================= */
-@keyframes police-scan {
-  0%   { background-position:   0% 50%; opacity: .9; }
-  20%  { background-position:  50% 50%; opacity: 1;  }
-  40%  { background-position: 100% 50%; opacity: .95; }
-  60%  { background-position:  50% 50%; opacity: 1; }
-  100% { background-position:   0% 50%; opacity: .9; }
-}
-
-.animate-police {
-  width: 80px;
-  height: 10px;
-  border-radius: 999px;
-  background: linear-gradient(
-    90deg,
-    rgba(255,255,255,.95) 0%,
-    rgba(0,120,255,.95) 50%,
-    rgba(255,0,60,.95) 100%
-  );
-  background-size: 300% 200%;
-  animation: police-scan 0.55s infinite linear;
-  box-shadow:
-    0 0 8px rgba(255,255,255,.7),
-    0 0 10px rgba(0,120,255,.7),
-    0 0 10px rgba(255,0,60,.6);
-}
-
-/* =========================
-   ✨ CARD LIGHT REFLECTION
-   ========================= */
-@keyframes card-glow-scan {
-  0%   { transform: translateX(-120%) rotate(8deg); opacity: 0; }
-  40%  { opacity: .9; }
-  60%  { opacity: .9; }
-  100% { transform: translateX(120%) rotate(8deg); opacity: 0; }
-}
-
-.glow-overlay {
-  pointer-events: none;
-  position: absolute;
-  top: -10%;
-  left: 0;
-  width: 140%;
-  height: 120%;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255,255,255,.55) 45%,
-    rgba(255,255,255,.9) 50%
-    ,
-    rgba(255,255,255,.55) 55%,
-    transparent 100%
-  );
-  animation: card-glow-scan 2.2s infinite ease-in-out;
-  filter: blur(1px);
+  display: none; /* Chrome/Safari */
 }

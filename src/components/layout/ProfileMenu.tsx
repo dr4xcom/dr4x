@@ -6,11 +6,13 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 
+const AVATAR_BUCKET = "avatars";
+
 type ProfileLite = {
   full_name: string | null;
   username: string | null;
   email: string | null;
-  avatar_url: string | null;
+  avatar_url: string | null; // هنا نخزن رابط الصورة النهائي (بعد التحويل من البكت)
 };
 
 export default function ProfileMenu({ className = "" }: { className?: string }) {
@@ -40,9 +42,10 @@ export default function ProfileMenu({ className = "" }: { className?: string }) 
           return;
         }
 
+        // نقرأ avatar_path + avatar_url من الجدول
         const { data, error } = await supabase
           .from("profiles")
-          .select("full_name, username, avatar_url")
+          .select("full_name, username, avatar_url, avatar_path")
           .eq("id", user.id)
           .maybeSingle();
 
@@ -52,11 +55,26 @@ export default function ProfileMenu({ className = "" }: { className?: string }) 
           console.error("ProfileMenu profiles error", error);
         }
 
+        let finalAvatarUrl: string | null = null;
+
+        // 1️⃣ لو فيه avatar_path من البكت → نحوله لرابط عام
+        if (data?.avatar_path) {
+          const { data: publicData } = supabase.storage
+            .from(AVATAR_BUCKET)
+            .getPublicUrl(data.avatar_path);
+
+          finalAvatarUrl = publicData?.publicUrl ?? null;
+        }
+        // 2️⃣ لو ما فيه avatar_path لكن فيه avatar_url قديم → نستخدمه
+        else if (data?.avatar_url) {
+          finalAvatarUrl = data.avatar_url;
+        }
+
         setProfile({
           full_name: data?.full_name ?? null,
           username: data?.username ?? null,
           email: user.email ?? null,
-          avatar_url: data?.avatar_url ?? null,
+          avatar_url: finalAvatarUrl,
         });
       } catch (e) {
         console.error("ProfileMenu load profile error", e);
@@ -178,7 +196,7 @@ export default function ProfileMenu({ className = "" }: { className?: string }) 
             ) : null}
           </div>
 
-          {/* العناصر المشتركة – هذه هي النقطة الأساسية */}
+          {/* العناصر المشتركة */}
           <button
             type="button"
             onClick={() => {
@@ -212,7 +230,7 @@ export default function ProfileMenu({ className = "" }: { className?: string }) 
             ملفي الصحي
           </button>
 
-          {/* زر "خاص للطبيب" مضاف هنا عشان يظهر في كل مكان */}
+          {/* زر "خاص للطبيب" */}
           <button
             type="button"
             onClick={() => {

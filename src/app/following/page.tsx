@@ -52,11 +52,7 @@ function SidebarButton({
 /* =========================
    Sidebar (نفس الهوم)
    ========================= */
-type ProfileLite = {
-  full_name: string | null;
-  username: string | null;
-  email: string | null;
-};
+type ProfileLite = { full_name: string | null; username: string | null; email: string | null };
 
 function SidebarMock() {
   const router = useRouter();
@@ -73,9 +69,7 @@ function SidebarMock() {
     let mounted = true;
 
     (async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!mounted) return;
 
       if (!user) {
@@ -128,8 +122,7 @@ function SidebarMock() {
     "مستخدم";
 
   const handle =
-    profile.username?.trim() ||
-    (profile.email ? profile.email.split("@")[0] : "");
+    profile.username?.trim() || (profile.email ? profile.email.split("@")[0] : "");
 
   const initials = (() => {
     const s = displayName.trim();
@@ -143,16 +136,9 @@ function SidebarMock() {
 
   return (
     <nav className="space-y-2">
-      <SidebarButton
-        icon={<Home className="h-5 w-5" />}
-        label="الرئيسية"
-        onClick={() => router.push("/home")}
-      />
+      <SidebarButton icon={<Home className="h-5 w-5" />} label="الرئيسية" onClick={() => router.push("/home")} />
       <SidebarButton icon={<Search className="h-5 w-5" />} label="التخصصات" />
-      <SidebarButton
-        icon={<Stethoscope className="h-5 w-5" />}
-        label="الأطباء"
-      />
+      <SidebarButton icon={<Stethoscope className="h-5 w-5" />} label="الأطباء" />
       <SidebarButton icon={<Bell className="h-5 w-5" />} label="التنبيهات" />
       <SidebarButton icon={<Mail className="h-5 w-5" />} label="الرسائل" />
 
@@ -163,12 +149,8 @@ function SidebarMock() {
               {initials}
             </div>
             <div className="min-w-0">
-              <div className="text-sm font-semibold truncate">
-                {displayName}
-              </div>
-              {handle ? (
-                <div className="text-xs text-slate-500 truncate">@{handle}</div>
-              ) : null}
+              <div className="text-sm font-semibold truncate">{displayName}</div>
+              {handle ? <div className="text-xs text-slate-500 truncate">@{handle}</div> : null}
             </div>
           </div>
 
@@ -255,12 +237,8 @@ function RightPanelMock() {
    Helpers
    ========================= */
 function hasMedia(p: PostRow) {
-  const imgs = Array.isArray((p as any).image_paths)
-    ? ((p as any).image_paths as string[]).filter(Boolean)
-    : [];
-  const vids = Array.isArray((p as any).video_urls)
-    ? ((p as any).video_urls as string[]).filter(Boolean)
-    : [];
+  const imgs = Array.isArray((p as any).image_paths) ? ((p as any).image_paths as string[]).filter(Boolean) : [];
+  const vids = Array.isArray((p as any).video_urls) ? ((p as any).video_urls as string[]).filter(Boolean) : [];
   return imgs.length > 0 || vids.length > 0;
 }
 
@@ -284,19 +262,11 @@ export default function FollowingTabsPage() {
   const [replyParentPosts, setReplyParentPosts] = useState<PostRow[]>([]);
   const [likedPosts, setLikedPosts] = useState<PostRow[]>([]);
 
-  const [profilesById, setProfilesById] = useState<Record<string, ProfileMini>>(
-    {}
-  );
+  const [profilesById, setProfilesById] = useState<Record<string, ProfileMini>>({});
 
-  const [likeCountByPost, setLikeCountByPost] = useState<
-    Record<number, number>
-  >({});
-  const [retweetCountByPost, setRetweetCountByPost] = useState<
-    Record<number, number>
-  >({});
-  const [replyCountByPost, setReplyCountByPost] = useState<
-    Record<number, number>
-  >({});
+  const [likeCountByPost, setLikeCountByPost] = useState<Record<number, number>>({});
+  const [retweetCountByPost, setRetweetCountByPost] = useState<Record<number, number>>({});
+  const [replyCountByPost, setReplyCountByPost] = useState<Record<number, number>>({});
 
   const [iLiked, setILiked] = useState<Record<number, boolean>>({});
   const [iRetweeted, setIRetweeted] = useState<Record<number, boolean>>({});
@@ -308,18 +278,12 @@ export default function FollowingTabsPage() {
   // menus (PostCard expects)
   const [shareOpen, setShareOpen] = useState<Record<number, boolean>>({});
   const [menuOpen, setMenuOpen] = useState<Record<number, boolean>>({});
-  const [replyMenuOpen, setReplyMenuOpen] = useState<Record<number, boolean>>(
-    {}
-  );
+  const [replyMenuOpen, setReplyMenuOpen] = useState<Record<number, boolean>>({});
 
   // replies (PostCard expects)
   const [openReplyFor, setOpenReplyFor] = useState<number | null>(null);
-  const [repliesByPostId, setRepliesByPostId] = useState<
-    Record<number, ReplyRow[]>
-  >({});
-  const [loadingRepliesFor, setLoadingRepliesFor] = useState<number | null>(
-    null
-  );
+  const [repliesByPostId, setRepliesByPostId] = useState<Record<number, ReplyRow[]>>({});
+  const [loadingRepliesFor, setLoadingRepliesFor] = useState<number | null>(null);
 
   // lightbox
   const [lbOpen, setLbOpen] = useState(false);
@@ -327,9 +291,7 @@ export default function FollowingTabsPage() {
   const [lbIndex, setLbIndex] = useState(0);
 
   function openLightbox(images: string[], index: number) {
-    const safe = (images || []).filter(
-      (x) => typeof x === "string" && x.trim()
-    );
+    const safe = (images || []).filter((x) => typeof x === "string" && x.trim());
     if (safe.length === 0) return;
     setLbImages(safe);
     setLbIndex(Math.max(0, Math.min(index, safe.length - 1)));
@@ -341,10 +303,7 @@ export default function FollowingTabsPage() {
     const missing = ids.filter((id) => !profilesById[id]);
     if (missing.length === 0) return;
 
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .in("id", missing);
+    const { data, error } = await supabase.from("profiles").select("*").in("id", missing);
     if (error) return;
 
     if (data?.length) {
@@ -367,13 +326,8 @@ export default function FollowingTabsPage() {
     }
   }
 
-  async function hydrateCountsAndStates(
-    postsToHydrate: PostRow[],
-    currentMeId: string
-  ) {
-    const postIds = Array.from(
-      new Set(postsToHydrate.map((p) => p.id).filter(Boolean))
-    );
+  async function hydrateCountsAndStates(postsToHydrate: PostRow[], currentMeId: string) {
+    const postIds = Array.from(new Set(postsToHydrate.map((p) => p.id).filter(Boolean)));
 
     // engagements
     if (postIds.length) {
@@ -431,9 +385,7 @@ export default function FollowingTabsPage() {
     }
 
     // follow state for authors
-    const authorIds = Array.from(
-      new Set(postsToHydrate.map((p) => p.author_id).filter(Boolean))
-    );
+    const authorIds = Array.from(new Set(postsToHydrate.map((p) => p.author_id).filter(Boolean)));
     if (authorIds.length) {
       const { data: fData, error: fErr } = await supabase
         .from("followers")
@@ -454,9 +406,7 @@ export default function FollowingTabsPage() {
 
     const { data, error } = await supabase
       .from("replies")
-      .select(
-        "id, post_id, user_id, content, created_at, image_urls, youtube_url"
-      )
+      .select("id, post_id, user_id, content, created_at, image_urls, youtube_url")
       .eq("post_id", pid)
       .order("created_at", { ascending: false })
       .limit(200);
@@ -495,10 +445,7 @@ export default function FollowingTabsPage() {
       if (error) return alert(error.message);
 
       setILiked((prev) => ({ ...prev, [pid]: false }));
-      setLikeCountByPost((prev) => ({
-        ...prev,
-        [pid]: Math.max(0, (prev[pid] ?? 0) - 1),
-      }));
+      setLikeCountByPost((prev) => ({ ...prev, [pid]: Math.max(0, (prev[pid] ?? 0) - 1) }));
       return;
     }
 
@@ -527,10 +474,7 @@ export default function FollowingTabsPage() {
       if (error) return alert(error.message);
 
       setIRetweeted((prev) => ({ ...prev, [pid]: false }));
-      setRetweetCountByPost((prev) => ({
-        ...prev,
-        [pid]: Math.max(0, (prev[pid] ?? 0) - 1),
-      }));
+      setRetweetCountByPost((prev) => ({ ...prev, [pid]: Math.max(0, (prev[pid] ?? 0) - 1) }));
       return;
     }
 
@@ -621,18 +565,12 @@ export default function FollowingTabsPage() {
 
   function shareWhatsApp(pid: number) {
     const link = getPostLink(pid);
-    window.open(
-      `https://wa.me/?text=${encodeURIComponent(link)}`,
-      "_blank",
-      "noopener,noreferrer"
-    );
+    window.open(`https://wa.me/?text=${encodeURIComponent(link)}`, "_blank", "noopener,noreferrer");
   }
 
   function shareEmail(pid: number) {
     const link = getPostLink(pid);
-    window.location.href = `mailto:?subject=${encodeURIComponent(
-      "DR4X Post"
-    )}&body=${encodeURIComponent(link)}`;
+    window.location.href = `mailto:?subject=${encodeURIComponent("DR4X Post")}&body=${encodeURIComponent(link)}`;
   }
 
   async function deletePost(pid: number) {
@@ -640,7 +578,7 @@ export default function FollowingTabsPage() {
     if (!ok) return;
 
     const res = await fetch(`/api/posts/${pid}/delete`, { method: "DELETE" });
-    const body = (await res.json().catch(() => ({}))) as any;
+    const body = await res.json().catch(() => ({} as any));
     if (!res.ok) return alert(body?.error ?? "فشل الحذف");
 
     // remove locally
@@ -656,14 +594,10 @@ export default function FollowingTabsPage() {
     const text = next.trim();
     if (!text) return alert("لا يمكن حفظ تغريدة فارغة");
 
-    const { error } = await supabase
-      .from("posts")
-      .update({ content: text })
-      .eq("id", pid);
+    const { error } = await supabase.from("posts").update({ content: text }).eq("id", pid);
     if (error) return alert(error.message);
 
-    const patch = (arr: PostRow[]) =>
-      arr.map((p) => (p.id === pid ? ({ ...p, content: text } as any) : p));
+    const patch = (arr: PostRow[]) => arr.map((p) => (p.id === pid ? ({ ...p, content: text } as any) : p));
     setMyPosts(patch);
     setLikedPosts(patch);
     setReplyParentPosts(patch);
@@ -681,36 +615,24 @@ export default function FollowingTabsPage() {
       return { ...prev, [pid]: rows.filter((r) => r.id !== replyId) };
     });
 
-    setReplyCountByPost((prev) => ({
-      ...prev,
-      [pid]: Math.max(0, (prev[pid] ?? 0) - 1),
-    }));
+    setReplyCountByPost((prev) => ({ ...prev, [pid]: Math.max(0, (prev[pid] ?? 0) - 1) }));
   }
 
-  async function editReply(
-    replyId: number,
-    pid: number,
-    current: string | null
-  ) {
+  async function editReply(replyId: number, pid: number, current: string | null) {
     const next = window.prompt("تعديل الرد:", current ?? "");
     if (next === null) return;
 
     const text = next.trim();
     if (!text) return alert("لا يمكن حفظ رد فارغ");
 
-    const { error } = await supabase
-      .from("replies")
-      .update({ content: text })
-      .eq("id", replyId);
+    const { error } = await supabase.from("replies").update({ content: text }).eq("id", replyId);
     if (error) return alert(error.message);
 
     setRepliesByPostId((prev) => {
       const rows = prev[pid] ?? [];
       return {
         ...prev,
-        [pid]: rows.map((r) =>
-          r.id === replyId ? { ...r, content: text } : r
-        ),
+        [pid]: rows.map((r) => (r.id === replyId ? { ...r, content: text } : r)),
       };
     });
   }
@@ -742,9 +664,7 @@ export default function FollowingTabsPage() {
         // 1) my posts
         const { data: pData, error: pErr } = await supabase
           .from("posts")
-          .select(
-            "id, author_id, content, image_paths, video_urls, is_retweet, original_post_id, view_count, created_at"
-          )
+          .select("id, author_id, content, image_paths, video_urls, is_retweet, original_post_id, view_count, created_at")
           .eq("author_id", uid)
           .order("created_at", { ascending: false })
           .limit(200);
@@ -758,9 +678,7 @@ export default function FollowingTabsPage() {
         // 2) my replies
         const { data: rData, error: rErr } = await supabase
           .from("replies")
-          .select(
-            "id, post_id, user_id, content, created_at, image_urls, youtube_url"
-          )
+          .select("id, post_id, user_id, content, created_at, image_urls, youtube_url")
           .eq("user_id", uid)
           .order("created_at", { ascending: false })
           .limit(200);
@@ -772,16 +690,12 @@ export default function FollowingTabsPage() {
         setMyReplies(replies);
 
         // fetch parent posts for replies tab
-        const parentIds = Array.from(
-          new Set(replies.map((r) => r.post_id).filter(Boolean))
-        );
+        const parentIds = Array.from(new Set(replies.map((r) => r.post_id).filter(Boolean)));
         let parentPosts: PostRow[] = [];
         if (parentIds.length) {
           const { data: ppData, error: ppErr } = await supabase
             .from("posts")
-            .select(
-              "id, author_id, content, image_paths, video_urls, is_retweet, original_post_id, view_count, created_at"
-            )
+            .select("id, author_id, content, image_paths, video_urls, is_retweet, original_post_id, view_count, created_at")
             .in("id", parentIds)
             .order("created_at", { ascending: false })
             .limit(500);
@@ -802,16 +716,12 @@ export default function FollowingTabsPage() {
 
         if (eErr) throw eErr;
 
-        const likedIds = Array.from(
-          new Set((eData ?? []).map((x: any) => x.post_id).filter(Boolean))
-        );
+        const likedIds = Array.from(new Set((eData ?? []).map((x: any) => x.post_id).filter(Boolean)));
         let liked: PostRow[] = [];
         if (likedIds.length) {
           const { data: lpData, error: lpErr } = await supabase
             .from("posts")
-            .select(
-              "id, author_id, content, image_paths, video_urls, is_retweet, original_post_id, view_count, created_at"
-            )
+            .select("id, author_id, content, image_paths, video_urls, is_retweet, original_post_id, view_count, created_at")
             .in("id", likedIds)
             .order("created_at", { ascending: false })
             .limit(500);
@@ -858,10 +768,8 @@ export default function FollowingTabsPage() {
   const likesCount = likedPosts.length;
 
   function renderList(list: PostRow[], label?: string) {
-    if (loading)
-      return <div className="text-sm text-slate-600 p-4">جاري التحميل...</div>;
-    if (!list.length)
-      return <div className="text-sm text-slate-500 p-4">لا يوجد عناصر.</div>;
+    if (loading) return <div className="text-sm text-slate-600 p-4">جاري التحميل...</div>;
+    if (!list.length) return <div className="text-sm text-slate-500 p-4">لا يوجد عناصر.</div>;
 
     return (
       <div className="space-y-3 p-3">
@@ -901,21 +809,13 @@ export default function FollowingTabsPage() {
               copyLink={copyLink}
               editPost={editPost}
               deletePost={deletePost}
-              // ✅ نعيد Promise<void> صريحة بدلاً من undefined
-              editReply={async (replyId, pid, current) => {
-                await editReply(replyId, pid, current);
-              }}
-              deleteReply={async (replyId, pid) => {
-                await deleteReply(replyId, pid);
-              }}
-              loadReplies={(pid) => loadReplies(pid)}
+              editReply={(replyId, pid, current) => void editReply(replyId, pid, current)}
+              deleteReply={(replyId, pid) => void deleteReply(replyId, pid)}
+              loadReplies={(pid) => void loadReplies(pid)}
               onPostedReply={async (pid) => {
                 await loadReplies(pid);
                 setOpenReplyFor(null);
-                setReplyCountByPost((prev) => ({
-                  ...prev,
-                  [pid]: (prev[pid] ?? 0) + 1,
-                }));
+                setReplyCountByPost((prev) => ({ ...prev, [pid]: (prev[pid] ?? 0) + 1 }));
               }}
               openLightbox={openLightbox}
               profilesById={profilesById}
@@ -976,8 +876,7 @@ export default function FollowingTabsPage() {
               onClick={() => setTab("posts")}
               type="button"
             >
-              المنشورات{" "}
-              <span className="text-xs text-slate-500">({postsCount})</span>
+              المنشورات <span className="text-xs text-slate-500">({postsCount})</span>
             </button>
 
             <button
@@ -990,8 +889,7 @@ export default function FollowingTabsPage() {
               onClick={() => setTab("replies")}
               type="button"
             >
-              الردود{" "}
-              <span className="text-xs text-slate-500">({repliesCount})</span>
+              الردود <span className="text-xs text-slate-500">({repliesCount})</span>
             </button>
 
             <button
@@ -1004,8 +902,7 @@ export default function FollowingTabsPage() {
               onClick={() => setTab("media")}
               type="button"
             >
-              الوسائط{" "}
-              <span className="text-xs text-slate-500">({mediaCount})</span>
+              الوسائط <span className="text-xs text-slate-500">({mediaCount})</span>
             </button>
 
             <button
@@ -1018,20 +915,19 @@ export default function FollowingTabsPage() {
               onClick={() => setTab("likes")}
               type="button"
             >
-              الإعجابات{" "}
-              <span className="text-xs text-slate-500">({likesCount})</span>
+              الإعجابات <span className="text-xs text-slate-500">({likesCount})</span>
             </button>
           </div>
 
           {/* Content */}
           {tab === "posts" ? renderList(myPosts) : null}
 
-          {tab === "replies"
-            ? renderList(
-                replyParentPosts,
-                "ردّيت على هذا المنشور (افتحه لرؤية الرد داخل التفاصيل)"
-              )
-            : null}
+          {tab === "replies" ? (
+            renderList(
+              replyParentPosts,
+              "ردّيت على هذا المنشور (افتحه لرؤية الرد داخل التفاصيل)"
+            )
+          ) : null}
 
           {tab === "media" ? renderList(mediaPosts) : null}
 

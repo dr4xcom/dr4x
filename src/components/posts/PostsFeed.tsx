@@ -35,7 +35,6 @@ export default function PostsFeed() {
   );
 
   const [meId, setMeId] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState<boolean>(false); // ✅ هل المستخدم أدمن؟
 
   const [likeCountByPost, setLikeCountByPost] = useState<
     Record<number, number>
@@ -85,21 +84,29 @@ export default function PostsFeed() {
     return id;
   }
 
-  // ✅ فحص هل المستخدم أدمن عن طريق RPC is_admin
-  async function loadIsAdmin(userId: string | null) {
-    if (!userId) {
-      setIsAdmin(false);
-      return;
-    }
-    const { data, error } = await supabase.rpc("is_admin", {
-      p_uid: userId,
-    });
-    if (error) {
-      console.warn("is_admin rpc error:", error.message);
-      setIsAdmin(false);
-      return;
-    }
-    setIsAdmin(!!data);
+  function mapProfileRow(p: any): ProfileMini {
+    // ✅ Fallbacks عشان لو أعمدة الاسم مختلفة عندك
+    const fullName =
+      p?.full_name ?? p?.name ?? p?.display_name ?? p?.fullName ?? null;
+
+    const username =
+      p?.username ?? p?.user_name ?? p?.userName ?? p?.handle ?? null;
+
+    return {
+      id: p.id,
+      full_name: fullName ?? null,
+      username: username ?? null,
+
+      avatar_url: p.avatar_url ?? null,
+      avatar: p.avatar ?? null,
+      avatar_path: p.avatar_path ?? null,
+
+      is_verified: p.is_verified ?? null,
+      verified: p.verified ?? null,
+
+      // ✅ الشارة
+      badge: (p.badge ?? null) as any,
+    };
   }
 
   async function loadPostsAndAuthors(currentMeId: string | null) {
@@ -109,10 +116,8 @@ export default function PostsFeed() {
     const { data: postsData, error: postsError } = await supabase
       .from("posts")
       .select(
-        "id, author_id, content, image_paths, video_urls, is_retweet, original_post_id, view_count, created_at, pinned_at"
+        "id, author_id, content, image_paths, video_urls, is_retweet, original_post_id, view_count, created_at"
       )
-      // ✅ الترتيب: المثبت أولاً ثم الأحدث
-      .order("pinned_at", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })
       .limit(20);
 
@@ -137,26 +142,22 @@ export default function PostsFeed() {
       return;
     }
 
-    const { data: profData } = await supabase
+    // ✅ رجعنا select("*") لأن عندك كان يشتغل ويجيب الأسماء
+    const { data: profData, error: profErr } = await supabase
       .from("profiles")
       .select("*")
       .in("id", authorIds);
 
-    const map: Record<string, ProfileMini> = {};
-    (profData ?? []).forEach((p: any) => {
-      map[p.id] = {
-        id: p.id,
-        full_name: p.full_name ?? null,
-        username: p.username ?? null,
-        avatar_url: p.avatar_url ?? null,
-        avatar: p.avatar ?? null,
-        avatar_path: p.avatar_path ?? null,
-        is_verified: p.is_verified ?? null,
-        verified: p.verified ?? null,
-      };
-    });
-
-    setProfilesById(map);
+    if (profErr) {
+      console.error("profiles load error:", profErr);
+      setProfilesById({});
+    } else {
+      const map: Record<string, ProfileMini> = {};
+      (profData ?? []).forEach((p: any) => {
+        map[p.id] = mapProfileRow(p);
+      });
+      setProfilesById(map);
+    }
 
     await loadEngagementsForPosts(safePosts, currentMeId);
     await loadFollowStateForAuthors(authorIds, currentMeId);
@@ -171,7 +172,7 @@ export default function PostsFeed() {
       if (!mounted) return;
       const id = await loadMe();
       if (!mounted) return;
-      await Promise.all([loadPostsAndAuthors(id), loadIsAdmin(id)]);
+      await loadPostsAndAuthors(id);
     })();
     return () => {
       mounted = false;
@@ -188,25 +189,21 @@ export default function PostsFeed() {
     const missing = userIds.filter((id) => id && !profilesById[id]);
     if (missing.length === 0) return;
 
-    const { data: profData } = await supabase
+    const { data: profData, error: profErr } = await supabase
       .from("profiles")
       .select("*")
       .in("id", missing);
+
+    if (profErr) {
+      console.error("ensureProfilesLoaded error:", profErr);
+      return;
+    }
 
     if (profData?.length) {
       setProfilesById((prev) => {
         const next = { ...prev };
         profData.forEach((p: any) => {
-          next[p.id] = {
-            id: p.id,
-            full_name: p.full_name ?? null,
-            username: p.username ?? null,
-            avatar_url: p.avatar_url ?? null,
-            avatar: p.avatar ?? null,
-            avatar_path: p.avatar_path ?? null,
-            is_verified: p.is_verified ?? null,
-            verified: p.verified ?? null,
-          };
+          next[p.id] = mapProfileRow(p);
         });
         return next;
       });
@@ -218,9 +215,7 @@ export default function PostsFeed() {
 
     const { data, error } = await supabase
       .from("replies")
-      .select(
-        "id, post_id, user_id, content, created_at, image_urls, youtube_url"
-      )
+      .select("id, post_id, user_id, content, created_at, image_urls, youtube_url")
       .eq("post_id", postId)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -252,7 +247,6 @@ export default function PostsFeed() {
     await ensureProfilesLoaded(ids);
   }
 
-  // ✅ في الهوم: زر الرد ينقل للتفاصيل بدل فتح ردود هنا
   function toggleReply(postId: number) {
     router.push(`/post/${postId}`);
   }
@@ -464,12 +458,10 @@ export default function PostsFeed() {
     setIFollow(map);
   }
 
-  // ✅✅✅ (المعدل فقط): جعل toggleFollow أكثر أمانًا + رسائل أوضح
   async function toggleFollow(authorId: string) {
     if (!meId) return alert("يجب تسجيل الدخول");
     if (!authorId || authorId === meId) return;
 
-    // منع الضغط المتكرر أثناء العملية
     if (followBusy[authorId]) return;
 
     setFollowBusy((p) => ({ ...p, [authorId]: true }));
@@ -485,11 +477,7 @@ export default function PostsFeed() {
           .eq("followed_id", authorId);
 
         if (error) {
-          // غالباً RLS أو صلاحيات
-          alert(
-            `فشل إلغاء المتابعة: ${error.message}\n` +
-              `إذا كان عندك RLS على جدول followers، أرسل صورة Policies للجدول فقط.`
-          );
+          alert(`فشل إلغاء المتابعة: ${error.message}`);
           return;
         }
 
@@ -503,10 +491,7 @@ export default function PostsFeed() {
       });
 
       if (error) {
-        alert(
-          `فشل المتابعة: ${error.message}\n` +
-            `إذا كان عندك RLS على جدول followers، أرسل صورة Policies للجدول فقط.`
-        );
+        alert(`فشل المتابعة: ${error.message}`);
         return;
       }
 
@@ -552,11 +537,8 @@ export default function PostsFeed() {
     const ok = confirm("هل تريد حذف التغريدة؟");
     if (!ok) return;
 
-    const res = await fetch(`/api/posts/${postId}/delete`, {
-      method: "DELETE",
-    });
+    const res = await fetch(`/api/posts/${postId}/delete`, { method: "DELETE" });
     const body = await res.json().catch(() => ({} as any));
-
     if (!res.ok) return alert(body?.error ?? "فشل الحذف");
 
     setPosts((prev) => prev.filter((x) => x.id !== postId));
@@ -633,31 +615,6 @@ export default function PostsFeed() {
     });
   }
 
-  // ✅ زر تثبيت / إلغاء التثبيت (للأدمن فقط)
-  async function togglePin(postId: number, currentlyPinned: boolean) {
-    if (!meId) return alert("يجب تسجيل الدخول");
-    if (!isAdmin) return alert("فقط المدير يمكنه تثبيت المنشورات");
-
-    const newPinnedAt = currentlyPinned ? null : new Date().toISOString();
-
-    const { error } = await supabase
-      .from("posts")
-      .update({ pinned_at: newPinnedAt })
-      .eq("id", postId);
-
-    if (error) {
-      alert(`فشل تغيير حالة التثبيت: ${error.message}`);
-      return;
-    }
-
-    // تحديث الحالة محليًا حتى يظهر التثبيت فورًا
-    setPosts((prev) =>
-      prev.map((p) =>
-        p.id === postId ? ({ ...p, pinned_at: newPinnedAt } as any) : p
-      )
-    );
-  }
-
   return (
     <div className="space-y-3">
       <ImageLightbox
@@ -696,73 +653,58 @@ export default function PostsFeed() {
 
         const replyCount = replyCountByPost[p.id] ?? 0;
 
-        const isPinned = !!(p as any).pinned_at;
-
         return (
-          <div key={p.id} className="space-y-1">
-            {isAdmin && (
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => togglePin(p.id, isPinned)}
-                  className="text-[11px] px-2 py-1 rounded-full border border-emerald-500 text-emerald-500 hover:bg-emerald-500 hover:text-white transition"
-                >
-                  {isPinned ? "إلغاء التثبيت" : "تثبيت في الأعلى"}
-                </button>
-              </div>
-            )}
-
-            <PostCard
-              post={p}
-              prof={prof}
-              meId={meId}
-              isOpen={isOpen}
-              replies={replies}
-              likeCount={likeCount}
-              retweetCount={retweetCount}
-              liked={liked}
-              retweeted={retweeted}
-              replyCount={replyCount}
-              following={following}
-              busyFollow={busyFollow}
-              menuOpen={menuOpen}
-              setMenuOpen={setMenuOpen}
-              shareOpen={shareOpen}
-              setShareOpen={setShareOpen}
-              replyMenuOpen={replyMenuOpen}
-              setReplyMenuOpen={setReplyMenuOpen}
-              iBookmarked={iBookmarked}
-              toggleReply={toggleReply} // ✅ ينقل للتفاصيل
-              toggleFollow={toggleFollow}
-              toggleRetweet={toggleRetweet}
-              toggleLike={toggleLike}
-              toggleBookmark={toggleBookmark}
-              shareWhatsApp={shareWhatsApp}
-              shareEmail={shareEmail}
-              copyLink={copyLink}
-              editPost={editPost}
-              deletePost={deletePost}
-              editReply={(replyId, postId, current) =>
-                void editReply(replyId, postId, current)
-              }
-              deleteReply={(replyId, postId) => deleteReply(replyId, postId)}
-              loadReplies={loadReplies}
-              onPostedReply={async (postId) => {
-                await loadReplies(postId);
-                setOpenReplyFor(null);
-                setReplyCountByPost((prev) => ({
-                  ...prev,
-                  [postId]: (prev[postId] ?? 0) + 1,
-                }));
-              }}
-              openLightbox={openLightbox}
-              profilesById={profilesById}
-              loadingRepliesFor={loadingRepliesFor}
-              setOpenReplyFor={setOpenReplyFor}
-              onOpenDetails={(id) => router.push(`/post/${id}`)}
-              mode="feed" // ✅ مهم: قصّ 5 أسطر + لا ردود بالهوم
-            />
-          </div>
+          <PostCard
+            key={p.id}
+            post={p}
+            prof={prof}
+            meId={meId}
+            isOpen={isOpen}
+            replies={replies}
+            likeCount={likeCount}
+            retweetCount={retweetCount}
+            liked={liked}
+            retweeted={retweeted}
+            replyCount={replyCount}
+            following={following}
+            busyFollow={busyFollow}
+            menuOpen={menuOpen}
+            setMenuOpen={setMenuOpen}
+            shareOpen={shareOpen}
+            setShareOpen={setShareOpen}
+            replyMenuOpen={replyMenuOpen}
+            setReplyMenuOpen={setReplyMenuOpen}
+            iBookmarked={iBookmarked}
+            toggleReply={(postId) => router.push(`/post/${postId}`)}
+            toggleFollow={toggleFollow}
+            toggleRetweet={toggleRetweet}
+            toggleLike={toggleLike}
+            toggleBookmark={toggleBookmark}
+            shareWhatsApp={shareWhatsApp}
+            shareEmail={shareEmail}
+            copyLink={copyLink}
+            editPost={editPost}
+            deletePost={deletePost}
+            editReply={(replyId, postId, current) =>
+              void editReply(replyId, postId, current)
+            }
+            deleteReply={(replyId, postId) => deleteReply(replyId, postId)}
+            loadReplies={loadReplies}
+            onPostedReply={async (postId) => {
+              await loadReplies(postId);
+              setOpenReplyFor(null);
+              setReplyCountByPost((prev) => ({
+                ...prev,
+                [postId]: (prev[postId] ?? 0) + 1,
+              }));
+            }}
+            openLightbox={openLightbox}
+            profilesById={profilesById}
+            loadingRepliesFor={loadingRepliesFor}
+            setOpenReplyFor={setOpenReplyFor}
+            onOpenDetails={(id) => router.push(`/post/${id}`)}
+            mode="feed"
+          />
         );
       })}
     </div>

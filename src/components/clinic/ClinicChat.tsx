@@ -27,10 +27,7 @@ export default function ClinicChat({
   const [text, setText] = useState("");
   const [err, setErr] = useState<string | null>(null);
 
-  const channelName = useMemo(
-    () => `clinic:${consultationId}`,
-    [consultationId]
-  );
+  const channelName = useMemo(() => `clinic:${consultationId}`, [consultationId]);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   // ✅ قناة واحدة فقط للاشتراك + الإرسال
@@ -84,17 +81,14 @@ export default function ClinicChat({
       return;
     }
 
-    // ✅ تعديل هنا فقط: نتعامل مع نتيجة send كـ any عشان TypeScript
-    const res = (await ch.send({
+    const { error } = await ch.send({
       type: "broadcast",
       event: "chat",
       payload: msg,
-    } as any)) as any;
-
-    const error = (res as any)?.error;
+    } as any);
 
     if (error) {
-      setErr(error.message ?? String(error));
+      setErr(error.message);
       return;
     }
 
@@ -107,12 +101,8 @@ export default function ClinicChat({
     return (
       <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
         <div className="font-bold">الشات المباشر</div>
-        <div className="text-sm text-slate-300 mt-1">
-          الشات متوقف من الإدارة.
-        </div>
-        <div className="text-xs text-slate-500 mt-2">
-          يمكن تفعيله من: /admin/settings
-        </div>
+        <div className="text-sm text-slate-300 mt-1">الشات متوقف من الإدارة.</div>
+        <div className="text-xs text-slate-500 mt-2">يمكن تفعيله من: /admin/settings</div>
       </div>
     );
   }
@@ -156,8 +146,7 @@ export default function ClinicChat({
       </div>
 
       <div className="mt-2 text-xs text-slate-500">
-        * الشات “Live” (Realtime) بدون تخزين دائم. سنضيف التخزين لاحقًا بجداول
-        جديدة Add-only.
+        * الشات “Live” (Realtime) بدون تخزين دائم. سنضيف التخزين لاحقًا بجداول جديدة Add-only.
       </div>
     </div>
   );

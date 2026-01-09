@@ -31,9 +31,23 @@ export async function apiFetchPosts(limit = 20): Promise<{
   return { posts: (data ?? []) as PostRow[], error: null };
 }
 
-export async function apiFetchProfilesByIds(ids: string[]): Promise<ProfileMini[]> {
+export async function apiFetchProfilesByIds(
+  ids: string[]
+): Promise<ProfileMini[]> {
   if (!ids.length) return [];
-  const { data } = await supabase.from("profiles").select("*").in("id", ids);
+
+  // ✅ نطلب badge صراحة
+  const { data, error } = await supabase
+    .from("profiles")
+    .select(
+      "id, full_name, username, avatar_url, avatar, avatar_path, is_verified, verified, badge"
+    )
+    .in("id", ids);
+
+  if (error) {
+    console.error("apiFetchProfilesByIds error:", error);
+    return [];
+  }
 
   const rows: ProfileMini[] = [];
   (data ?? []).forEach((p: any) => {
@@ -46,19 +60,25 @@ export async function apiFetchProfilesByIds(ids: string[]): Promise<ProfileMini[
       avatar_path: p.avatar_path ?? null,
       is_verified: p.is_verified ?? null,
       verified: p.verified ?? null,
+      badge: p.badge ?? null, // ✅
     });
   });
 
   return rows;
 }
 
-export async function apiFetchRepliesByPostId(postId: number, limit = 50): Promise<{
+export async function apiFetchRepliesByPostId(
+  postId: number,
+  limit = 50
+): Promise<{
   rows: ReplyRow[];
   error: string | null;
 }> {
   const { data, error } = await supabase
     .from("replies")
-    .select("id, post_id, user_id, content, created_at, image_urls, youtube_url")
+    .select(
+      "id, post_id, user_id, content, created_at, image_urls, youtube_url"
+    )
     .eq("post_id", postId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -73,7 +93,10 @@ export async function apiFetchReplyCounts(postIds: number[]): Promise<{
 }> {
   if (!postIds.length) return { map: {}, error: null };
 
-  const { data, error } = await supabase.from("replies").select("post_id").in("post_id", postIds);
+  const { data, error } = await supabase
+    .from("replies")
+    .select("post_id")
+    .in("post_id", postIds);
 
   if (error) return { map: {}, error: error.message ?? "Unknown error" };
 
@@ -101,7 +124,10 @@ export async function apiFetchEngagements(postIds: number[]): Promise<{
   return { rows: (data ?? []) as EngagementRow[], error: null };
 }
 
-export async function apiFetchFollowingMap(meId: string, authorIds: string[]): Promise<{
+export async function apiFetchFollowingMap(
+  meId: string,
+  authorIds: string[]
+): Promise<{
   map: Record<string, boolean>;
   error: string | null;
 }> {
@@ -124,7 +150,11 @@ export async function apiFetchFollowingMap(meId: string, authorIds: string[]): P
   return { map, error: null };
 }
 
-export async function apiDeleteEngagement(postId: number, meId: string, type: string) {
+export async function apiDeleteEngagement(
+  postId: number,
+  meId: string,
+  type: string
+) {
   return supabase
     .from("engagements")
     .delete()
@@ -133,23 +163,28 @@ export async function apiDeleteEngagement(postId: number, meId: string, type: st
     .eq("type", type);
 }
 
-export async function apiInsertEngagement(postId: number, meId: string, type: string) {
-  return supabase.from("engagements").insert({
-    post_id: postId,
-    user_id: meId,
-    type,
-  });
+export async function apiInsertEngagement(
+  postId: number,
+  meId: string,
+  type: string
+) {
+  return supabase
+    .from("engagements")
+    .insert({ post_id: postId, user_id: meId, type });
 }
 
 export async function apiUnfollow(meId: string, authorId: string) {
-  return supabase.from("followers").delete().eq("follower_id", meId).eq("followed_id", authorId);
+  return supabase
+    .from("followers")
+    .delete()
+    .eq("follower_id", meId)
+    .eq("followed_id", authorId);
 }
 
 export async function apiFollow(meId: string, authorId: string) {
-  return supabase.from("followers").insert({
-    follower_id: meId,
-    followed_id: authorId,
-  });
+  return supabase
+    .from("followers")
+    .insert({ follower_id: meId, followed_id: authorId });
 }
 
 export async function apiUpdatePostContent(postId: number, text: string) {

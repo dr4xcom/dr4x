@@ -11,6 +11,7 @@ import PostsFeed from "@/components/posts/PostsFeed";
 import PostComposerModal from "@/components/posts/PostComposerModal";
 import NewPostComposer from "@/components/posts/NewPostComposer";
 import HomeLibraryWidget from "@/components/library/HomeLibraryWidget";
+import VoiceAssistant from "@/components/ai/VoiceAssistant";
 
 /* ========================= Sidebar Button ========================= */
 function SidebarButton({
@@ -240,10 +241,7 @@ function SidebarMock({ onOpenComposer }: { onOpenComposer: () => void }) {
         onClick={() => router.push("/category")} // ⬅️ الزر الجديد
       />
 
-      <SidebarButton
-        icon={<Stethoscope className="h-5 w-5" />}
-        label="الأطباء"
-      />
+      <SidebarButton icon={<Stethoscope className="h-5 w-5" />} label="الأطباء" />
 
       {/* ✅ زر المكتبة جنب بقية الأزرار بدون تغيير أي تصميم آخر */}
       <SidebarButton
@@ -393,6 +391,9 @@ function RightPanelMock() {
           />
         </div>
       </div>
+
+      {/* ✅ مساعد الصوت تحت زر البحث مباشرة */}
+      <VoiceAssistant />
 
       <div className="dr4x-card p-4">
         <div className="font-semibold mb-2">ماذا تقدم DR4X؟</div>

@@ -1,9 +1,11 @@
+// src/components/posts/NewPostComposer.tsx
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { Image as ImageIcon, Link2, Video, X, Smile } from "lucide-react";
+import { Image as ImageIcon, Youtube, Video, X, Smile } from "lucide-react";
 import Image from "next/image";
+import VoiceAssistant from "@/components/ai/VoiceAssistant";
 
 const QUICK_EMOJIS = [
   "😀",
@@ -34,7 +36,9 @@ function isUrlLike(s: string) {
   return /^https?:\/\/\S+$/i.test(u);
 }
 
-/* ========================= ✅ إضافة للمعاينة فقط ========================= */
+/* =========================
+   ✅ للمعاينة فقط
+   ========================= */
 function extractYouTubeId(url: string): string | null {
   const u = (url || "").trim();
   if (!u) return null;
@@ -61,6 +65,7 @@ export default function NewPostComposer({
 }) {
   // ✅ الأفاتار فقط
   const [profile, setProfile] = useState<ProfileMini | null>(null);
+
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -69,10 +74,15 @@ export default function NewPostComposer({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previewImages, setPreviewImages] = useState<string[]>([]);
 
+  // ✅ فيديو من الجهاز
+  const videoFileRef = useRef<HTMLInputElement | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
+
   // ✅ ايموجي
   const [showEmoji, setShowEmoji] = useState(false);
 
-  // ✅ رابط فيديو (يُضبط من أيقونة الفيديو فقط)
+  // ✅ رابط فيديو خارجي (يوتيوب وغيرها)
   const [videoUrl, setVideoUrl] = useState("");
 
   useEffect(() => {
@@ -92,7 +102,6 @@ export default function NewPostComposer({
         .maybeSingle();
 
       if (!mounted) return;
-
       setProfile((prof as any) ?? null);
     })();
 
@@ -109,9 +118,11 @@ export default function NewPostComposer({
 
   const canPost = useMemo(() => {
     const hasText = content.trim().length > 0;
-    const hasMedia = selectedFiles.length > 0 || isUrlLike(videoUrl);
+    const hasMedia =
+      selectedFiles.length > 0 || !!selectedVideo || isUrlLike(videoUrl);
+
     return !loading && (hasText || hasMedia);
-  }, [content, selectedFiles.length, videoUrl, loading]);
+  }, [content, selectedFiles.length, selectedVideo, videoUrl, loading]);
 
   function pickImages() {
     fileRef.current?.click();
@@ -119,8 +130,10 @@ export default function NewPostComposer({
 
   function onFilesChosen(files: FileList | null) {
     if (!files || files.length === 0) return;
+
     const arr = Array.from(files);
     const nextPreviews = arr.map((f) => URL.createObjectURL(f));
+
     setSelectedFiles((prev) => [...prev, ...arr]);
     setPreviewImages((prev) => [...prev, ...nextPreviews]);
   }
@@ -141,6 +154,7 @@ export default function NewPostComposer({
 
   async function uploadImages(userId: string) {
     if (selectedFiles.length === 0) return [];
+
     const urls: string[] = [];
 
     for (const f of selectedFiles) {
@@ -164,10 +178,49 @@ export default function NewPostComposer({
     return urls;
   }
 
+  async function uploadVideo(userId: string) {
+    if (!selectedVideo) return null;
+
+    const safe = makeSafeFilename(selectedVideo.name || "video");
+    const path = `${userId}/videos/${Date.now()}_${safe}`;
+
+    const { error: upErr } = await supabase.storage
+      .from("post_media")
+      .upload(path, selectedVideo, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: selectedVideo.type || undefined,
+      });
+
+    if (upErr) throw new Error(upErr.message);
+
+    const { data } = supabase.storage.from("post_media").getPublicUrl(path);
+    return data?.publicUrl ?? null;
+  }
+
+  function pickVideo() {
+    videoFileRef.current?.click();
+  }
+
+  function onVideoChosen(files: FileList | null) {
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+
+    // نظف المعاينة القديمة لو موجودة
+    if (videoPreview) {
+      URL.revokeObjectURL(videoPreview);
+    }
+
+    setSelectedVideo(file);
+    setVideoPreview(URL.createObjectURL(file));
+  }
+
+  // رابط فيديو خارجي (يوتيوب إلخ)
   function promptVideoUrl() {
     const current = videoUrl.trim();
     const p = window.prompt(
-      "ضع رابط فيديو (YouTube / TikTok / Instagram / ...):",
+      "ضع رابط فيديو يوتيوب (يمكن أيضًا روابط أخرى مثل TikTok/Instagram):",
       current || ""
     );
     if (p === null) return;
@@ -203,12 +256,20 @@ export default function NewPostComposer({
       }
 
       const mediaUrls = await uploadImages(user.id);
+      const uploadedVideoUrl = await uploadVideo(user.id);
+
       const v = videoUrl.trim();
-      const videoUrls = isUrlLike(v) ? [v] : [];
+      const videoUrls: string[] = [];
+      if (uploadedVideoUrl) videoUrls.push(uploadedVideoUrl);
+      if (isUrlLike(v)) videoUrls.push(v);
+
+      // ✅ هنا التعديل المهم: content لا يكون NULL
+      const text = content.trim();
+      const contentValue = text.length ? text : "";
 
       const { error } = await supabase.from("posts").insert({
         author_id: user.id,
-        content: content.trim() ? content.trim() : null,
+        content: contentValue, // سترنق حتى لو ما كتبت شيء
         image_paths: mediaUrls.length ? mediaUrls : [],
         video_urls: videoUrls.length ? videoUrls : [],
         is_retweet: false,
@@ -218,12 +279,18 @@ export default function NewPostComposer({
 
       if (error) throw new Error(error.message);
 
+      // تنظيف المعاينات
       previewImages.forEach((u) => URL.revokeObjectURL(u));
+      if (videoPreview) URL.revokeObjectURL(videoPreview);
+
       setContent("");
       setSelectedFiles([]);
       setPreviewImages([]);
+      setSelectedVideo(null);
+      setVideoPreview(null);
       setVideoUrl("");
       setShowEmoji(false);
+
       onPosted?.();
     } catch (e: any) {
       alert(e?.message || "حدث خطأ");
@@ -232,16 +299,16 @@ export default function NewPostComposer({
     }
   }
 
-  /* ========================= ✅ (جديد) قيم المعاينة فقط ========================= */
+  /* =========================
+     ✅ قيم المعاينة فقط
+     ========================= */
   const youtubeId = useMemo(() => {
     const u = videoUrl.trim();
     if (!u) return null;
-
     const lower = u.toLowerCase();
     const isYouTube =
       lower.includes("youtube.com") || lower.includes("youtu.be");
     if (!isYouTube) return null;
-
     return extractYouTubeId(u);
   }, [videoUrl]);
 
@@ -281,7 +348,7 @@ export default function NewPostComposer({
         </div>
       </div>
 
-      {/* ✅ معاينة الصور (ثابتة 160×90 بدون تمدد) */}
+      {/* ✅ معاينة الصور */}
       {previewImages.length > 0 ? (
         <div className="mt-3 flex flex-wrap gap-2">
           {previewImages.map((src, idx) => (
@@ -295,7 +362,6 @@ export default function NewPostComposer({
                 alt="preview"
                 className="w-full h-full object-cover"
               />
-
               <button
                 type="button"
                 onClick={() => removeImage(idx)}
@@ -309,7 +375,31 @@ export default function NewPostComposer({
         </div>
       ) : null}
 
-      {/* ✅ (تحديث فقط للمعاينة) معاينة YouTube بدل سطر الرابط */}
+      {/* ✅ معاينة فيديو مرفوع من الجهاز */}
+      {videoPreview ? (
+        <div className="mt-3 rounded-2xl overflow-hidden border border-slate-200 bg-black">
+          <video src={videoPreview} controls className="w-full h-auto" />
+
+          <div className="flex items-center gap-2 p-2 bg-black/60 text-white text-xs">
+            <Video className="h-4 w-4" />
+            <span className="truncate">فيديو مرفوع من جهازك</span>
+            <button
+              type="button"
+              onClick={() => {
+                if (videoPreview) URL.revokeObjectURL(videoPreview);
+                setSelectedVideo(null);
+                setVideoPreview(null);
+              }}
+              className="ms-auto inline-flex items-center justify-center h-7 w-7 rounded-full hover:bg-white/10"
+              title="حذف الفيديو"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {/* ✅ معاينة YouTube أو رابط خارجي */}
       {youtubeId ? (
         <div className="mt-3 rounded-2xl overflow-hidden border border-slate-200 bg-black">
           <div className="relative w-full aspect-video">
@@ -322,9 +412,8 @@ export default function NewPostComposer({
             />
           </div>
 
-          {/* زر مسح الرابط (نفس وظيفة X السابقة) */}
           <div className="flex items-center gap-2 p-2 bg-black/60 text-white text-xs">
-            <Video className="h-4 w-4" />
+            <Youtube className="h-4 w-4" />
             <span className="truncate">{videoUrl}</span>
             <button
               type="button"
@@ -337,9 +426,8 @@ export default function NewPostComposer({
           </div>
         </div>
       ) : isUrlLike(videoUrl) ? (
-        // لو الرابط ليس يوتيوب: نخليه مثل ما كان (سطر + X)
         <div className="mt-3 flex items-center gap-2 text-xs text-slate-600">
-          <Video className="h-4 w-4" />
+          <Youtube className="h-4 w-4" />
           <span className="truncate">{videoUrl}</span>
           <button
             type="button"
@@ -355,16 +443,14 @@ export default function NewPostComposer({
       {/* ✅ شريط الأدوات + زر نشر */}
       <div className="mt-3 flex items-center gap-3">
         <div className="flex items-center gap-4 text-slate-500">
+          {/* زر رابط يوتيوب */}
           <button
             type="button"
-            onClick={() => {
-              const v = window.prompt("ضع رابط (اختياري):");
-              if (v !== null) window.prompt("انسخ/عدّل الرابط:", v);
-            }}
-            className="hover:text-slate-900 transition"
-            title="رابط"
+            onClick={promptVideoUrl}
+            className="hover:text-red-600 transition"
+            title="إرفاق رابط فيديو يوتيوب"
           >
-            <Link2 className="h-5 w-5" />
+            <Youtube className="h-5 w-5" />
           </button>
 
           <button
@@ -385,22 +471,27 @@ export default function NewPostComposer({
             <ImageIcon className="h-5 w-5" />
           </button>
 
-          {/* ✅ أيقونة فيديو (بدل خانة الإدخال) */}
+          {/* زر رفع فيديو من الجهاز */}
           <button
             type="button"
-            onClick={promptVideoUrl}
+            onClick={pickVideo}
             className="hover:text-slate-900 transition"
-            title="إرفاق رابط فيديو"
+            title="رفع فيديو من الجهاز"
           >
             <Video className="h-5 w-5" />
           </button>
+        </div>
+
+        {/* ✅ زر الذكاء في الوسط بين أيقونة الكاميرا وزر النشر (بدون تغيير أي شيء آخر) */}
+        <div className="flex-1 flex justify-center">
+          <VoiceAssistant variant="inline" />
         </div>
 
         <button
           type="button"
           onClick={handlePost}
           disabled={!canPost}
-          className="ms-auto rounded-full px-5 py-2 text-sm font-semibold bg-slate-900 text-white disabled:opacity-50"
+          className="rounded-full px-5 py-2 text-sm font-semibold bg-slate-900 text-white disabled:opacity-50"
         >
           {loading ? "جاري النشر..." : "نشر"}
         </button>
@@ -425,6 +516,7 @@ export default function NewPostComposer({
         </div>
       ) : null}
 
+      {/* مدخل الصور */}
       <input
         ref={fileRef}
         type="file"
@@ -432,6 +524,15 @@ export default function NewPostComposer({
         multiple
         className="hidden"
         onChange={(e) => onFilesChosen(e.target.files)}
+      />
+
+      {/* مدخل الفيديو من الجهاز */}
+      <input
+        ref={videoFileRef}
+        type="file"
+        accept="video/*"
+        className="hidden"
+        onChange={(e) => onVideoChosen(e.target.files)}
       />
     </div>
   );

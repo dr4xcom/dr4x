@@ -30,50 +30,122 @@ import {
   getInitials,
   isProbablyYouTube,
   isVerified,
+  getBadge,
 } from "@/lib/postsFeed/utils";
 import { supabase } from "@/utils/supabase/client";
 
 const AVATAR_BUCKET = "avatars";
 
+function BadgeIcons({ badge }: { badge: ReturnType<typeof getBadge> }) {
+  // بدون تغيير “فكرة الشارة” لكن نخليها أيقونات أوضح
+  const Check = () => (
+    <span
+      className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-sky-500 text-white text-[11px] font-black shadow-sm"
+      title="موثّق"
+    >
+      ✓
+    </span>
+  );
+
+  const Star = ({ n = 1 }: { n?: number }) => (
+    <span
+      className="inline-flex items-center text-yellow-400 drop-shadow-sm"
+      title={n === 1 ? "نجمة" : "نجوم"}
+      style={{ lineHeight: 1 }}
+    >
+      {"★".repeat(Math.max(1, n))}
+    </span>
+  );
+
+  if (!badge) return null;
+
+  if (badge === "verified") {
+    return (
+      <span className="inline-flex items-center gap-1">
+        <Check />
+      </span>
+    );
+  }
+
+  if (badge === "star1") {
+    return (
+      <span className="inline-flex items-center gap-1">
+        <Star n={1} />
+      </span>
+    );
+  }
+
+  if (badge === "star1_verified") {
+    return (
+      <span className="inline-flex items-center gap-1">
+        <Star n={1} />
+        <Check />
+      </span>
+    );
+  }
+
+  // star3_verified
+  return (
+    <span className="inline-flex items-center gap-1">
+      <Star n={3} />
+      <Check />
+    </span>
+  );
+}
+
 export default function PostCard({
   post,
   prof,
   meId,
+
   isOpen,
   replies,
+
   likeCount,
   retweetCount,
   liked,
   retweeted,
   replyCount,
+
   following,
   busyFollow,
+
   menuOpen,
   setMenuOpen,
   shareOpen,
   setShareOpen,
   replyMenuOpen,
   setReplyMenuOpen,
+
   iBookmarked,
+
   toggleReply,
   toggleFollow,
   toggleRetweet,
   toggleLike,
   toggleBookmark,
+
   shareWhatsApp,
   shareEmail,
   copyLink,
+
   editPost,
   deletePost,
+
   editReply,
   deleteReply,
+
   loadReplies,
   onPostedReply,
+
   openLightbox,
+
   profilesById,
   loadingRepliesFor,
   setOpenReplyFor,
+
   onOpenDetails,
+
   mode = "feed",
 }: {
   post: PostRow;
@@ -137,9 +209,9 @@ export default function PostCard({
   const name = getDisplayName(prof);
   const handle = getHandle(prof);
   const verified = isVerified(prof);
+  const badge = getBadge(prof); // verified | star1 | star1_verified | star3_verified | null
   const initials = getInitials(name);
 
-  // رابط صورة العضو من Supabase Storage
   const [avatarUrl, setAvatarUrl] = useState("");
 
   useEffect(() => {
@@ -159,7 +231,6 @@ export default function PostCard({
           return;
         }
 
-        // لو هو رابط جاهز نستخدمه مباشرة
         if (
           v.startsWith("http://") ||
           v.startsWith("https://") ||
@@ -169,7 +240,6 @@ export default function PostCard({
           return;
         }
 
-        // مسار داخل Bucket avatars → نستخدم createSignedUrl
         const { data, error } = await supabase.storage
           .from(AVATAR_BUCKET)
           .createSignedUrl(v, 60 * 60);
@@ -182,7 +252,6 @@ export default function PostCard({
 
         const url = data?.signedUrl ?? "";
         if (!alive) return;
-
         setAvatarUrl(
           url ? `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}` : ""
         );
@@ -217,7 +286,6 @@ export default function PostCard({
 
   const views = Number(post.view_count ?? 0);
 
-  // رابط صفحة المستخدم العامة /u/[username]
   const profileUsername = useMemo(() => {
     const u = (prof as any)?.username ? String((prof as any).username) : "";
     if (u) return u;
@@ -232,7 +300,6 @@ export default function PostCard({
 
   return (
     <div className="dr4x-card p-4">
-      {/* ===== Header ===== */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 min-w-0">
@@ -272,45 +339,52 @@ export default function PostCard({
               </div>
             )}
 
-            {profileHref ? (
-              <Link
-                href={profileHref}
-                className="text-sm font-semibold text-slate-900 truncate"
-                aria-label="فتح بروفايل المستخدم"
-              >
-                {name}
-              </Link>
-            ) : (
-              <div className="text-sm font-semibold text-slate-900 truncate">
-                {name}
+            <div className="flex flex-col min-w-0">
+              <div className="flex items-center gap-1 min-w-0">
+                {profileHref ? (
+                  <Link
+                    href={profileHref}
+                    className="text-sm font-semibold text-slate-900 truncate"
+                    aria-label="فتح بروفايل المستخدم"
+                  >
+                    {name}
+                  </Link>
+                ) : (
+                  <div className="text-sm font-semibold text-slate-900 truncate">
+                    {name}
+                  </div>
+                )}
+
+                {/* ✅ الشارات كأيقونات واضحة */}
+                <BadgeIcons badge={badge} />
               </div>
-            )}
 
-            {handle ? (
-              profileHref ? (
-                <Link
-                  href={profileHref}
-                  className="text-xs text-slate-500 truncate"
-                  aria-label="فتح بروفايل المستخدم"
-                >
-                  {handle}
-                  {verified ? " ✓" : ""}
-                </Link>
-              ) : (
-                <div className="text-xs text-slate-500 truncate">
-                  {handle}
-                  {verified ? " ✓" : ""}
-                </div>
-              )
-            ) : null}
+              <div className="flex items-center gap-2 text-xs text-slate-500 min-w-0">
+                {handle ? (
+                  profileHref ? (
+                    <Link
+                      href={profileHref}
+                      className="truncate"
+                      aria-label="فتح بروفايل المستخدم"
+                    >
+                      {handle}
+                      {verified ? " ✓" : ""}
+                    </Link>
+                  ) : (
+                    <span className="truncate">
+                      {handle}
+                      {verified ? " ✓" : ""}
+                    </span>
+                  )
+                ) : null}
 
-            <div className="text-xs text-slate-500 truncate">
-              • {formatTime(post.created_at)}
+                <span className="truncate">• {formatTime(post.created_at)}</span>
+
+                {post.is_retweet ? (
+                  <span className="text-[11px] text-slate-400">• إعادة</span>
+                ) : null}
+              </div>
             </div>
-          </div>
-
-          <div className="mt-1 text-xs text-slate-500">
-            {post.is_retweet ? "• إعادة" : ""}
           </div>
         </div>
 
@@ -320,7 +394,13 @@ export default function PostCard({
               type="button"
               onClick={() => toggleFollow(post.author_id)}
               disabled={busyFollow}
-              className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition"
+              className={[
+                "inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold transition",
+                following
+                  ? "border border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
+                  : "border border-black bg-black text-white hover:bg-black/90",
+                busyFollow ? "opacity-60 cursor-not-allowed" : "",
+              ].join(" ")}
               title={following ? "إلغاء المتابعة" : "متابعة"}
             >
               {following ? (
@@ -377,7 +457,6 @@ export default function PostCard({
         </div>
       </div>
 
-      {/* ===== المحتوى ===== */}
       <div className="mt-3">
         <div
           className={[
@@ -399,7 +478,6 @@ export default function PostCard({
         ) : null}
       </div>
 
-      {/* ===== الصور ===== */}
       {Array.isArray(post.image_paths) && post.image_paths.length > 0 ? (
         <div className="mt-3 flex flex-wrap gap-2">
           {post.image_paths.map((src, idx) => (
@@ -411,17 +489,12 @@ export default function PostCard({
               title="عرض الصورة"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={src}
-                alt="post"
-                className="w-full h-full object-cover"
-              />
+              <img src={src} alt="post" className="w-full h-full object-cover" />
             </button>
           ))}
         </div>
       ) : null}
 
-      {/* ===== الفيديو ===== */}
       {Array.isArray(post.video_urls) && post.video_urls.length > 0 ? (
         <div className="mt-3 space-y-2">
           {post.video_urls.map((url, idx) => {
@@ -459,7 +532,6 @@ export default function PostCard({
         </div>
       ) : null}
 
-      {/* ===== الأزرار ===== */}
       <div className="mt-3 flex items-center justify-between">
         <button
           type="button"
@@ -529,7 +601,6 @@ export default function PostCard({
             ) : null}
           </button>
 
-          {/* المشاهدات */}
           <button
             type="button"
             onClick={goDetails}
@@ -591,7 +662,6 @@ export default function PostCard({
         </div>
       </div>
 
-      {/* ===== الردود ===== */}
       {mode === "details" ? (
         <ReplyList
           postId={post.id}

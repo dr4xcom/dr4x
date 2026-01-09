@@ -1,5 +1,9 @@
 // src/lib/postsFeed/utils.ts
 
+/* =========================
+   Types
+========================= */
+
 export type PostRow = {
   id: number;
   author_id: string;
@@ -23,6 +27,11 @@ export type ProfileMini = {
 
   is_verified?: boolean | null;
   verified?: boolean | null;
+
+  // ✅ شارة المستخدم (تدار من لوحة التحكم)
+  // القيم المدعومة:
+  // null | verified | star1 | star1_verified | star3_verified
+  badge?: string | null;
 };
 
 export type ReplyRow = {
@@ -48,6 +57,10 @@ export type FollowRow = {
   followed_id: string;
   created_at: string;
 };
+
+/* =========================
+   Helpers
+========================= */
 
 export function formatTime(iso: string) {
   const d = new Date(iso);
@@ -79,6 +92,25 @@ export function isVerified(p?: ProfileMini) {
   return p?.is_verified === true || p?.verified === true;
 }
 
+/**
+ * ✅ قراءة الشارة بطريقة آمنة
+ * تستخدم في PostCard فقط للعرض
+ */
+export function getBadge(
+  p?: ProfileMini
+): "verified" | "star1" | "star1_verified" | "star3_verified" | null {
+  const v = (p as any)?.badge;
+  if (
+    v === "verified" ||
+    v === "star1" ||
+    v === "star1_verified" ||
+    v === "star3_verified"
+  ) {
+    return v;
+  }
+  return null;
+}
+
 export function getInitials(name: string) {
   const s = name.trim();
   const a = s[0] ?? "D";
@@ -86,7 +118,10 @@ export function getInitials(name: string) {
   return (a + b).toUpperCase();
 }
 
-// ===== YouTube helpers =====
+/* =========================
+   YouTube helpers
+========================= */
+
 export function extractYouTubeId(url: string): string | null {
   const u = (url || "").trim();
   if (!u) return null;
