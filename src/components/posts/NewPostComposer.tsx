@@ -20,9 +20,12 @@ const QUICK_EMOJIS = [
   "🥹",
 ];
 
+const AVATAR_BUCKET = "avatars";
+
 type ProfileMini = {
   full_name: string | null;
   username: string | null;
+  // ✅ هنا نخزن الرابط النهائي للصورة (مو عمود DB)
   avatar_url: string | null;
 };
 
@@ -95,14 +98,34 @@ export default function NewPostComposer({
 
       if (!mounted || !user) return;
 
-      const { data: prof } = await supabase
+      // ✅ مهم: جدول profiles ما فيه avatar_url — نقرأ avatar_path فقط
+      const { data: prof, error } = await supabase
         .from("profiles")
-        .select("full_name, username, avatar_url")
+        .select("full_name, username, avatar_path")
         .eq("id", user.id)
         .maybeSingle();
 
       if (!mounted) return;
-      setProfile((prof as any) ?? null);
+
+      if (error) {
+        // لا نكسر الصفحة
+        setProfile(null);
+        return;
+      }
+
+      let finalAvatarUrl: string | null = null;
+
+      const avatarPath = (prof as any)?.avatar_path as string | null;
+      if (avatarPath) {
+        const { data } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(avatarPath);
+        finalAvatarUrl = data?.publicUrl ?? null;
+      }
+
+      setProfile({
+        full_name: (prof as any)?.full_name ?? null,
+        username: (prof as any)?.username ?? null,
+        avatar_url: finalAvatarUrl,
+      });
     })();
 
     return () => {

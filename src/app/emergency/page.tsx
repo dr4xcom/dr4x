@@ -14,8 +14,43 @@ type SelectedDoctor = {
   specialtyMain: string | null;
   specialtySub: string | null;
   bio: string | null;
+
+  // ✅ نستخدم avatarUrl في الواجهة (قد يكون URL كامل أو path في الستوريج)
   avatarUrl: string | null;
 };
+
+const DOCTOR_AVATAR_BUCKET = "avatars";
+
+function isHttpUrl(s: string) {
+  const v = (s || "").trim().toLowerCase();
+  return v.startsWith("http://") || v.startsWith("https://");
+}
+
+// ✅ إذا جاء avatarUrl كـ path (مثل uid/avatar.jpg) نحوله إلى Signed URL
+async function resolveAvatarUrlMaybe(pathOrUrl: string | null): Promise<string | null> {
+  const raw = (pathOrUrl || "").trim();
+  if (!raw) return null;
+
+  // URL جاهز
+  if (isHttpUrl(raw)) return raw;
+
+  // data: (نادر) لكن نخليه
+  if (raw.startsWith("data:")) return raw;
+
+  // نعتبره path داخل storage (avatars)
+  try {
+    const { data, error } = await supabase.storage
+      .from(DOCTOR_AVATAR_BUCKET)
+      .createSignedUrl(raw, 60 * 60);
+
+    if (error) return null;
+
+    const url = data?.signedUrl ?? "";
+    return url ? `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}` : null;
+  } catch {
+    return null;
+  }
+}
 
 function buildDoctorFromRow(row: DoctorRow): SelectedDoctor {
   const id = String(row.id ?? "").trim() || "unknown";
@@ -39,7 +74,8 @@ function buildDoctorFromRow(row: DoctorRow): SelectedDoctor {
 
   const bio = row.bio ?? row.description ?? row.about ?? null;
 
-  const avatarUrl =
+  // ✅ نجمع أي مرجع محتمل للصورة (URL أو path)
+  const avatarRef =
     row.avatar_url ??
     row.photo_url ??
     row.image_url ??
@@ -53,7 +89,7 @@ function buildDoctorFromRow(row: DoctorRow): SelectedDoctor {
     specialtyMain,
     specialtySub,
     bio,
-    avatarUrl,
+    avatarUrl: avatarRef ? String(avatarRef) : null,
   };
 }
 
@@ -115,7 +151,18 @@ export default function EmergencyClinicPage() {
         if (error) throw error;
         if (!alive) return;
 
-        const mapped = (data ?? []).map(buildDoctorFromRow);
+        // ✅ نبني الدكاترة ثم نحوّل avatarUrl إن كان path إلى Signed URL
+        const mappedBase = (data ?? []).map(buildDoctorFromRow);
+
+        const mapped = await Promise.all(
+          mappedBase.map(async (d) => {
+            const resolved = await resolveAvatarUrlMaybe(d.avatarUrl);
+            return { ...d, avatarUrl: resolved ?? d.avatarUrl };
+          })
+        );
+
+        if (!alive) return;
+
         setDoctors(mapped);
 
         if (mapped.length > 0 && !selectedId) {
@@ -295,9 +342,7 @@ export default function EmergencyClinicPage() {
               {doctors.map((d) => {
                 const isActive = d.id === selectedId;
                 const avatar =
-                  d.avatarUrl && d.avatarUrl.trim()
-                    ? d.avatarUrl
-                    : siteLogoUrl;
+                  d.avatarUrl && d.avatarUrl.trim() ? d.avatarUrl : siteLogoUrl;
 
                 return (
                   <button
@@ -320,16 +365,13 @@ export default function EmergencyClinicPage() {
                         alt={d.name}
                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                         onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).src =
-                            siteLogoUrl;
+                          (e.currentTarget as HTMLImageElement).src = siteLogoUrl;
                         }}
                       />
                     </div>
 
                     <div className="bg-black text-slate-50 px-3 py-2 text-center text-xs leading-relaxed">
-                      <div className="font-extrabold text-[13px]">
-                        {d.name}
-                      </div>
+                      <div className="font-extrabold text-[13px]">{d.name}</div>
                       {d.specialtyMain && (
                         <div className="text-[11px] text-emerald-300">
                           {d.specialtyMain}

@@ -13,29 +13,41 @@ export async function GET() {
   try {
     const apiKey = env("OPENAI_API_KEY");
 
-    // Realtime: mint ephemeral key (client secret)
-    // Docs: /v1/realtime/client_secrets
+    // ✅ مرر إعدادات session داخل body
+    // (حسب دليل Realtime WebRTC: POST /v1/realtime/client_secrets)
+    const sessionConfig = {
+      session: {
+        type: "realtime",
+        // غيّرها إذا تبغى موديل ثاني
+        // ملاحظة: لازم يكون موديل تدعمه Realtime في حسابك
+        model: "gpt-realtime",
+        audio: {
+          output: {
+            voice: "marin",
+          },
+        },
+      },
+    };
+
     const r = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        // ممكن تضيف إعدادات جلسة هنا لو تحتاج لاحقًا
-        // مثلاً: expires_in, etc (حسب الوثائق)
-      }),
+      body: JSON.stringify(sessionConfig),
     });
 
     const text = await r.text();
+
     if (!r.ok) {
+      // ✅ رجّع تفاصيل الخطأ (مهم للتشخيص)
       return NextResponse.json(
         { error: "Failed to mint realtime token", details: text },
-        { status: 500 }
+        { status: r.status }
       );
     }
 
-    // يرجع JSON فيه value أو client_secret حسب صيغة OpenAI الحالية
     return new NextResponse(text, {
       status: 200,
       headers: { "Content-Type": "application/json" },
