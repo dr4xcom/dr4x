@@ -12,7 +12,7 @@ type ProfileLite = {
   full_name: string | null;
   username: string | null;
   email: string | null;
-  avatar_url: string | null; // هنا نخزن رابط الصورة النهائي (بعد التحويل من البكت)
+  avatar_url: string | null; // رابط نهائي (Signed URL)
 };
 
 export default function ProfileMenu({ className = "" }: { className?: string }) {
@@ -23,6 +23,23 @@ export default function ProfileMenu({ className = "" }: { className?: string }) 
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
+  // ✅ تحويل avatar_path إلى Signed URL (يشتغل حتى لو bucket private)
+  async function resolveAvatarUrl(path: string | null): Promise<string | null> {
+    if (!path) return null;
+
+    // Signed URL لمدة ساعة + كاش باسسر عشان يتحدث بسرعة بعد الرفع
+    const { data, error } = await supabase.storage
+      .from(AVATAR_BUCKET)
+      .createSignedUrl(path, 60 * 60);
+
+    if (error) return null;
+
+    const url = data?.signedUrl ?? null;
+    if (!url) return null;
+
+    return `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`;
+  }
+
   // تحميل بيانات المستخدم
   useEffect(() => {
     let alive = true;
@@ -30,11 +47,17 @@ export default function ProfileMenu({ className = "" }: { className?: string }) 
     (async () => {
       try {
         setLoadingProfile(true);
+
         const {
           data: { user },
+          error: uErr,
         } = await supabase.auth.getUser();
 
         if (!alive) return;
+
+        if (uErr) {
+          console.error("ProfileMenu auth.getUser error", uErr);
+        }
 
         if (!user) {
           setProfile(null);
@@ -42,10 +65,10 @@ export default function ProfileMenu({ className = "" }: { className?: string }) 
           return;
         }
 
-        // نقرأ avatar_path + avatar_url من الجدول
+        // ✅ نقرأ فقط الأعمدة الموجودة فعلاً: avatar_path (بدون avatar_url)
         const { data, error } = await supabase
           .from("profiles")
-          .select("full_name, username, avatar_url, avatar_path")
+          .select("full_name, username, avatar_path")
           .eq("id", user.id)
           .maybeSingle();
 
@@ -55,24 +78,15 @@ export default function ProfileMenu({ className = "" }: { className?: string }) 
           console.error("ProfileMenu profiles error", error);
         }
 
-        let finalAvatarUrl: string | null = null;
+        const finalAvatarUrl = await resolveAvatarUrl(
+          (data as any)?.avatar_path ?? null
+        );
 
-        // 1️⃣ لو فيه avatar_path من البكت → نحوله لرابط عام
-        if (data?.avatar_path) {
-          const { data: publicData } = supabase.storage
-            .from(AVATAR_BUCKET)
-            .getPublicUrl(data.avatar_path);
-
-          finalAvatarUrl = publicData?.publicUrl ?? null;
-        }
-        // 2️⃣ لو ما فيه avatar_path لكن فيه avatar_url قديم → نستخدمه
-        else if (data?.avatar_url) {
-          finalAvatarUrl = data.avatar_url;
-        }
+        if (!alive) return;
 
         setProfile({
-          full_name: data?.full_name ?? null,
-          username: data?.username ?? null,
+          full_name: (data as any)?.full_name ?? null,
+          username: (data as any)?.username ?? null,
           email: user.email ?? null,
           avatar_url: finalAvatarUrl,
         });
@@ -176,6 +190,10 @@ export default function ProfileMenu({ className = "" }: { className?: string }) 
             width={36}
             height={36}
             className="h-full w-full object-cover"
+            // احتياط لو فيه مشكلة دومين الصور
+            onError={() => {
+              // لا نكسر الصفحة
+            }}
           />
         ) : (
           initials
@@ -190,9 +208,7 @@ export default function ProfileMenu({ className = "" }: { className?: string }) 
               {loadingProfile ? "..." : displayName}
             </div>
             {handleName && !loadingProfile ? (
-              <div className="text-xs text-slate-500 truncate">
-                @{handleName}
-              </div>
+              <div className="text-xs text-slate-500 truncate">@{handleName}</div>
             ) : null}
           </div>
 
