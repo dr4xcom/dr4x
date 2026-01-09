@@ -81,14 +81,20 @@ export default function ClinicChat({
       return;
     }
 
-    const { error } = await ch.send({
+    // ✅ fix: RealtimeChannelSendResponse لا يحتوي error في بعض الإصدارات
+    const res = await ch.send({
       type: "broadcast",
       event: "chat",
       payload: msg,
     } as any);
 
-    if (error) {
-      setErr(error.message);
+    const maybeErr =
+      (res as any)?.error ||
+      (res as any)?.reason ||
+      ((res as any)?.ok === false ? "send failed" : "");
+
+    if (maybeErr) {
+      setErr(String(maybeErr));
       return;
     }
 

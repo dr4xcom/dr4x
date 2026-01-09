@@ -64,7 +64,8 @@ export default function VoiceAssistant({
     const js = safeJsonParse(txt) as TokenResponse | null;
 
     if (!r.ok) {
-      throw new Error(js?.error || txt || "Failed to get token");
+      // ✅ fix: TokenResponse لا يحتوي error
+      throw new Error((js as any)?.error || txt || "Failed to get token");
     }
 
     const key = js?.value || js?.client_secret;
@@ -116,12 +117,9 @@ export default function VoiceAssistant({
         setStatus("listening");
 
         // (اختياري) نرسل إعدادات + ترحيب بعد فتح القناة
-        // لهجة لبنانية + شخصية واقعية + خطوات بعد الانتهاء
         sendEvent({
           type: "session.update",
           session: {
-            // ملاحظة: بعض الحقول قد تختلف حسب إصدار Realtime.
-            // هذا النمط متوافق مع فكرة "events" المذكورة في الوثائق.
             model,
             audio: { output: { voice } },
             instructions:
@@ -143,7 +141,6 @@ export default function VoiceAssistant({
       };
 
       dc.onmessage = (evt) => {
-        // لو حبيت لاحقًا تعرض نص/أحداث هنا
         // console.log("realtime event:", evt.data);
       };
 
@@ -156,8 +153,6 @@ export default function VoiceAssistant({
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      // Realtime WebRTC: POST SDP مباشرة إلى OpenAI مع Authorization: Bearer EPHEMERAL_KEY
-      // Docs تشير للاتصال عبر /v1/realtime?model=...
       const sdpResp = await fetch(
         `https://api.openai.com/v1/realtime?model=${encodeURIComponent(model)}`,
         {
@@ -176,11 +171,10 @@ export default function VoiceAssistant({
       }
 
       await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
-      // الآن الجلسة شغّالة
     } catch (e: any) {
       setErr(e?.message || "فشل تشغيل المساعد الصوتي");
       setStatus("error");
-      stop(); // نظّف
+      stop();
     }
   }
 
@@ -212,7 +206,6 @@ export default function VoiceAssistant({
     setStatus("stopped");
   }
 
-  // لو خرج المستخدم من الصفحة
   useEffect(() => {
     return () => stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -220,7 +213,6 @@ export default function VoiceAssistant({
 
   const isOn = status === "listening" || status === "starting";
 
-  // UI صغير (inline) أو كارد
   if (variant === "inline") {
     return (
       <div className="inline-flex items-center gap-2">
@@ -270,7 +262,6 @@ export default function VoiceAssistant({
     );
   }
 
-  // card mode (لو تبغاه لاحقًا)
   return (
     <div className="dr4x-card p-4">
       <div className="flex items-center justify-between gap-3">
