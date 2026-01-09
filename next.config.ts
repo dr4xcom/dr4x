@@ -5,9 +5,10 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "*.supabase.co",
+        hostname: "**.supabase.co",
       },
     ],
+    unoptimized: true, // ✅ هذا أهم سطر: يمنع optimizer اللي يسبب 400
   },
 };
 

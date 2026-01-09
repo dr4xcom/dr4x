@@ -190,6 +190,7 @@ export default function ProfileMenu({ className = "" }: { className?: string }) 
             width={36}
             height={36}
             className="h-full w-full object-cover"
+            unoptimized
             // احتياط لو فيه مشكلة دومين الصور
             onError={() => {
               // لا نكسر الصفحة
