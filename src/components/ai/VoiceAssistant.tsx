@@ -22,6 +22,10 @@ type TokenResponse = {
   client_secret?: string;
   expires_at?: number;
   session?: any;
+
+  // ✅ للرسائل القادمة من API عند الفشل
+  error?: string;
+  details?: any;
 };
 
 function safeJsonParse(s: string) {
@@ -64,8 +68,13 @@ export default function VoiceAssistant({
     const js = safeJsonParse(txt) as TokenResponse | null;
 
     if (!r.ok) {
-      // ✅ fix: TokenResponse لا يحتوي error
-      throw new Error((js as any)?.error || txt || "Failed to get token");
+      // ✅ اعرض تفاصيل مفيدة بدل "400 ()"
+      const msg =
+        js?.error ||
+        (typeof js?.details === "string" ? js.details : "") ||
+        txt ||
+        "Failed to get token";
+      throw new Error(msg);
     }
 
     const key = js?.value || js?.client_secret;
@@ -153,21 +162,50 @@ export default function VoiceAssistant({
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      const sdpResp = await fetch(
-        `https://api.openai.com/v1/realtime?model=${encodeURIComponent(model)}`,
-        {
+      // ✅ جرب المسار الأحدث أولاً
+      let answerSdp = "";
+      let ok = false;
+
+      // A) New endpoint
+      try {
+        const sdpResp = await fetch("https://api.openai.com/v1/realtime/calls", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${key}`,
             "Content-Type": "application/sdp",
           },
           body: offer.sdp || "",
-        }
-      );
+        });
 
-      const answerSdp = await sdpResp.text();
-      if (!sdpResp.ok) {
-        throw new Error(answerSdp || "Failed to start realtime session");
+        answerSdp = await sdpResp.text();
+        ok = sdpResp.ok;
+
+        // إذا رجع HTML أو نص فاضي، اعتبره فشل
+        if (!ok) {
+          // continue to fallback
+        }
+      } catch {
+        ok = false;
+      }
+
+      // B) Fallback endpoint (القديم)
+      if (!ok) {
+        const sdpResp2 = await fetch(
+          `https://api.openai.com/v1/realtime?model=${encodeURIComponent(model)}`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${key}`,
+              "Content-Type": "application/sdp",
+            },
+            body: offer.sdp || "",
+          }
+        );
+
+        answerSdp = await sdpResp2.text();
+        if (!sdpResp2.ok) {
+          throw new Error(answerSdp || "Failed to start realtime session");
+        }
       }
 
       await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
@@ -225,11 +263,7 @@ export default function VoiceAssistant({
           ].join(" ")}
           title={isOn ? "إيقاف المساعد" : "ابدأ المساعد الصوتي"}
         >
-          {isOn ? (
-            <Square className="h-5 w-5" />
-          ) : (
-            <Stethoscope className="h-5 w-5" />
-          )}
+          {isOn ? <Square className="h-5 w-5" /> : <Stethoscope className="h-5 w-5" />}
           <span className="text-sm font-semibold">{isOn ? "إيقاف" : "ابدأ"}</span>
         </button>
 
