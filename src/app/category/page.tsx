@@ -84,12 +84,12 @@ function CategoryLandingPage() {
 
         const [eHours, ePrice, dHours, dPrice] = await Promise.all([
           getSystemSettingString("clinic_emergency_hours", "طوارئ 24 ساعة"),
-          getSystemSettingNumber("clinic_emergency_price", null),
+          getSystemSettingNumber("clinic_emergency_price", undefined),
           getSystemSettingString(
             "clinic_dept_default_hours",
             "من 4:00 م إلى 10:00 م"
           ),
-          getSystemSettingNumber("clinic_dept_default_price", null),
+          getSystemSettingNumber("clinic_dept_default_price", undefined),
         ]);
 
         if (!alive) return;

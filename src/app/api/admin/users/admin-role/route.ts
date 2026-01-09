@@ -1,22 +1,19 @@
-// src/app/api/admin/users/moderators-list/route.ts
+// src/app/api/admin/users/admin-role/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-function getEnv(name: string) {
+export const runtime = "nodejs";
+
+function env(name: string) {
   const v = process.env[name];
   if (!v) throw new Error(`Missing env: ${name}`);
   return v;
 }
 
-// نجيب uid من الـ Bearer token (نفس الفكرة في باقي admin APIs)
-async function getUserIdFromBearer(
-  anon: ReturnType<typeof createClient>,
-  req: Request
-) {
-  const auth = req.headers.get("authorization") || "";
-  const token = auth.toLowerCase().startsWith("bearer ")
-    ? auth.slice(7)
-    : null;
+// نجيب uid من الـ Bearer token
+async function getUserIdFromBearer(anon: any, req: Request) {
+  const auth = req.headers.get("authorization") || req.headers.get("Authorization") || "";
+  const token = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7) : null;
   if (!token) return null;
 
   const { data, error } = await anon.auth.getUser(token);
@@ -25,53 +22,63 @@ async function getUserIdFromBearer(
 }
 
 // نستعمل نفس RPC is_admin اللي عندك
-async function isAdmin(
-  admin: ReturnType<typeof createClient>,
-  uid: string
-) {
-  const { data, error } = await admin.rpc("is_admin", { p_uid: uid });
+async function isAdmin(admin: any, uid: string) {
+  // ✅ إصلاح TypeScript لباراميترات RPC
+  const { data, error } = await (admin as any).rpc("is_admin", { p_uid: uid } as any);
   if (error) return false;
   return !!data;
 }
 
 export async function POST(req: Request) {
   try {
-    const supabaseUrl = getEnv("NEXT_PUBLIC_SUPABASE_URL");
-    const supabaseAnonKey = getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
-    const supabaseServiceKey = getEnv("SUPABASE_SERVICE_ROLE_KEY");
+    const supabaseUrl = env("NEXT_PUBLIC_SUPABASE_URL");
+    const supabaseAnonKey = env("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+    const supabaseServiceKey = env("SUPABASE_SERVICE_ROLE_KEY");
 
     const anon = createClient(supabaseUrl, supabaseAnonKey, {
       auth: { persistSession: false },
     });
+
     const admin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { persistSession: false },
     });
 
-    // نتأكد أن اللي يطلب القائمة هو أدمن فعليًا
-    const uid = await getUserIdFromBearer(anon, req);
+    // نتأكد أن اللي يطلب العملية هو أدمن فعليًا
+    const uid = await getUserIdFromBearer(anon as any, req);
     if (!uid) {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const okAdmin = await isAdmin(admin, uid);
+    const okAdmin = await isAdmin(admin as any, uid);
     if (!okAdmin) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
-    // نقرأ كل المشرفين من جدول admin_users
-    const { data, error } = await admin.from("admin_users").select("uid");
-    if (error) {
-      throw new Error(error.message);
+    // نتوقع body: { target_user_id: string, role: string }
+    const body = await req.json().catch(() => ({}));
+    const target_user_id = String(body?.target_user_id ?? "");
+    const role = String(body?.role ?? "");
+
+    if (!target_user_id || !role) {
+      return NextResponse.json(
+        { ok: false, error: "Missing target_user_id/role" },
+        { status: 400 }
+      );
     }
 
-    const uids =
-      (data ?? [])
-        .map((row: any) => row?.uid)
-        .filter((x: string | null) => !!x) || [];
+    // ✅ تحديث الدور في profiles (إذا عندك عمود مختلف عدله هنا فقط)
+    const { error } = await admin
+      .from("profiles")
+      .update({ role })
+      .eq("id", target_user_id);
 
-    return NextResponse.json({ ok: true, uids });
+    if (error) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true });
   } catch (e: any) {
-    console.error("moderators-list error:", e);
+    console.error("admin-role error:", e);
     return NextResponse.json(
       { ok: false, error: e?.message || "Unexpected error" },
       { status: 500 }

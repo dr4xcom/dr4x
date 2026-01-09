@@ -17,14 +17,14 @@ function toInt(v: any) {
 }
 
 async function safeUpsert(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: any, // ✅ typing فقط
   table: string,
   payload: Record<string, any>,
   onConflict: string
 ) {
-  const { error } = await supabaseAdmin
+  const { error } = await (supabaseAdmin as any)
     .from(table)
-    .upsert(payload as any, { onConflict });
+    .upsert(payload as any, { onConflict } as any);
 
   if (error) throw new Error(`${table} upsert error: ${error.message}`);
 }
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
 
     // 1) profiles
     await safeUpsert(
-      supabaseAdmin,
+      supabaseAdmin as any, // ✅ مهم جدًا
       "profiles",
       {
         id: uid,
@@ -71,7 +71,7 @@ export async function POST(req: Request) {
     if (mode === "patient") {
       // 2) patients
       await safeUpsert(
-        supabaseAdmin,
+        supabaseAdmin as any, // ✅ مهم جدًا
         "patients",
         {
           profile_id: uid,
@@ -87,7 +87,7 @@ export async function POST(req: Request) {
 
       // 3) patient_extra
       await safeUpsert(
-        supabaseAdmin,
+        supabaseAdmin as any, // ✅ مهم جدًا
         "patient_extra",
         {
           patient_id: uid,
@@ -98,7 +98,7 @@ export async function POST(req: Request) {
     } else {
       // 2) doctors
       await safeUpsert(
-        supabaseAdmin,
+        supabaseAdmin as any, // ✅ مهم جدًا
         "doctors",
         {
           profile_id: uid,

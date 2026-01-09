@@ -4,89 +4,84 @@ import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 
-function env(name: string) {
+function getEnv(name: string) {
   const v = process.env[name];
   if (!v) throw new Error(`Missing env: ${name}`);
   return v;
 }
 
+// نجيب uid من الـ Bearer token (نفس الفكرة في باقي admin APIs)
+async function getUserIdFromBearer(anon: any, req: Request) {
+  const auth =
+    req.headers.get("authorization") || req.headers.get("Authorization") || "";
+  const token = auth.toLowerCase().startsWith("bearer ")
+    ? auth.slice(7)
+    : null;
+  if (!token) return null;
+
+  const { data, error } = await anon.auth.getUser(token);
+  if (error) return null;
+  return data.user?.id ?? null;
+}
+
+// نستعمل نفس RPC is_admin اللي عندك
+async function isAdmin(admin: any, uid: string) {
+  // ✅ إصلاح TypeScript: Types عندك تعتبر rpc args = undefined
+  const { data, error } = await (admin as any).rpc(
+    "is_admin",
+    { p_uid: uid } as any
+  );
+  if (error) return false;
+  return !!data;
+}
+
 export async function POST(req: Request) {
   try {
-    const supabaseUrl = env("NEXT_PUBLIC_SUPABASE_URL");
-    const serviceRoleKey = env("SUPABASE_SERVICE_ROLE_KEY");
-    const anonKey = env("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+    const supabaseUrl = getEnv("NEXT_PUBLIC_SUPABASE_URL");
+    const supabaseAnonKey = getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+    const supabaseServiceKey = getEnv("SUPABASE_SERVICE_ROLE_KEY");
 
-    // 1) نقرأ التوكن من الهيدر
-    const authHeader = req.headers.get("authorization") || "";
-    const token = authHeader.startsWith("Bearer ")
-      ? authHeader.slice(7)
-      : null;
+    const anon = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: false },
+    });
 
-    if (!token) {
+    const admin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false },
+    });
+
+    // نتأكد أن اللي يطلب القائمة هو أدمن فعليًا
+    const uid = await getUserIdFromBearer(anon as any, req);
+    if (!uid) {
       return NextResponse.json(
-        { ok: false, error: "missing access token" },
+        { ok: false, error: "Unauthorized" },
         { status: 401 }
       );
     }
 
-    // 2) نجيب user.id من التوكن
-    const userClient = createClient(supabaseUrl, anonKey, {
-      auth: { persistSession: false },
-      global: { headers: { Authorization: `Bearer ${token}` } },
-    });
-
-    const { data: userData, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userData?.user) {
+    const okAdmin = await isAdmin(admin as any, uid);
+    if (!okAdmin) {
       return NextResponse.json(
-        { ok: false, error: "invalid access token" },
-        { status: 401 }
-      );
-    }
-
-    const currentUid = userData.user.id;
-
-    // 3) نتأكد أن هذا المستخدم أدمن (موجود في admin_users)
-    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false },
-    });
-
-    const { data: adminRow, error: adminErr } = await adminClient
-      .from("admin_users")
-      .select("id")
-      .eq("id", currentUid)
-      .maybeSingle();
-
-    if (adminErr) {
-      console.error("admin check error", adminErr);
-      throw adminErr;
-    }
-
-    if (!adminRow) {
-      return NextResponse.json(
-        { ok: false, error: "not admin" },
+        { ok: false, error: "Forbidden" },
         { status: 403 }
       );
     }
 
-    // 4) نقرأ المشرفين من جدول moderator_roles فقط
-    const { data: rows, error: listErr } = await adminClient
-      .from("moderator_roles")
-      .select("uid");
-
-    if (listErr) {
-      console.error("moderators list error", listErr);
-      throw listErr;
+    // نقرأ كل المشرفين من جدول admin_users
+    const { data, error } = await admin.from("admin_users").select("uid");
+    if (error) {
+      throw new Error(error.message);
     }
 
-    const uids = (rows ?? [])
-      .map((r: any) => r.uid as string)
-      .filter(Boolean);
+    const uids =
+      (data ?? [])
+        .map((row: any) => row?.uid)
+        .filter((x: string | null) => !!x) || [];
 
     return NextResponse.json({ ok: true, uids });
   } catch (e: any) {
-    console.error("moderators-list route error", e);
+    console.error("moderators-list error:", e);
     return NextResponse.json(
-      { ok: false, error: e?.message || "internal error" },
+      { ok: false, error: e?.message || "Unexpected error" },
       { status: 500 }
     );
   }

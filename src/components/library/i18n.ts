@@ -9,6 +9,7 @@ const dict = {
     requiresPurchase: "يتطلب شراء",
     preview: "معاينة",
     download: "تحميل",
+    downloads: "التحميلات",
     previewViews: "مشاهدات المعاينة",
     downloadClicks: "نقرات التحميل",
     downloadSuccess: "تنزيلات ناجحة",
@@ -44,6 +45,7 @@ const dict = {
     update: "تحديث",
     openCategory: "فتح القسم",
     updateLibrary: "تحديث المكتبة",
+    updateBanner: "تحديث البانر",
   },
   en: {
     library: "Library",
@@ -53,6 +55,7 @@ const dict = {
     requiresPurchase: "Purchase required",
     preview: "Preview",
     download: "Download",
+    downloads: "Downloads",
     previewViews: "Preview views",
     downloadClicks: "Download clicks",
     downloadSuccess: "Successful downloads",
@@ -88,6 +91,7 @@ const dict = {
     update: "Update",
     openCategory: "Open category",
     updateLibrary: "Update library",
+    updateBanner: "Update banner",
   },
   tr: {
     library: "Kütüphane",
@@ -97,6 +101,7 @@ const dict = {
     requiresPurchase: "Satın alma gerekli",
     preview: "Önizleme",
     download: "İndir",
+    downloads: "İndirmeler",
     previewViews: "Önizleme görüntüleme",
     downloadClicks: "İndirme tıklaması",
     downloadSuccess: "Başarılı indirme",
@@ -128,10 +133,11 @@ const dict = {
     save: "Kaydet",
     approve: "Onayla",
     reject: "Reddet",
-    banner: "Kütüphane afişi",
+    banner: "Kütüphane afişي",
     update: "Güncelle",
     openCategory: "Kategoriyi aç",
     updateLibrary: "Kütüphaneyi güncelle",
+    updateBanner: "Afişi güncelle",
   },
 } as const;
 
