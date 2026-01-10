@@ -303,11 +303,11 @@ function SidebarMock({ onOpenComposer }: { onOpenComposer: () => void }) {
             {menuOpen && (
               <div
                 className={[
-                  "absolute end-0 bottom-full mb-2 w-44 rounded-2xl border",
-                  "bg-white opacity-100 shadow-lg overflow-hidden",
-                  "ring-1 ring-black/5",
-                  "z-[9999] isolate",
+                  "absolute end-0 bottom-full mb-2 w-44 rounded-2xl border border-slate-200",
+                  "bg-white shadow-xl overflow-hidden ring-1 ring-black/5",
+                  "z-[9999]",
                 ].join(" ")}
+                style={{ opacity: 1 }}
               >
                 {/* ملفي الشخصي -> /u/[username] */}
                 <button
@@ -345,14 +345,14 @@ function SidebarMock({ onOpenComposer }: { onOpenComposer: () => void }) {
                   ملفي الصحي
                 </button>
 
-                {/* ✅ زر خاص بالطبيب في الانسدالة */}
+                {/* ✅ زر خاص للطبيب (أحمر + بولد) */}
                 <button
                   type="button"
                   onClick={() => {
                     setMenuOpen(false);
                     router.push("/doctor/clinic");
                   }}
-                  className="w-full text-start px-4 py-3 text-sm hover:bg-slate-50 text-slate-900 font-semibold"
+                  className="w-full text-start px-4 py-3 text-sm font-extrabold text-red-600 hover:bg-red-50"
                 >
                   خاص للطبيب
                 </button>
