@@ -15,7 +15,11 @@ type ProfileLite = {
   avatar_url: string | null; // رابط نهائي (Signed URL)
 };
 
-export default function ProfileMenu({ className = "" }: { className?: string }) {
+export default function ProfileMenu({
+  className = "",
+}: {
+  className?: string;
+}) {
   const router = useRouter();
 
   const [profile, setProfile] = useState<ProfileLite | null>(null);
@@ -26,7 +30,7 @@ export default function ProfileMenu({ className = "" }: { className?: string }) 
   // ✅ نقرر: القائمة تفتح تحت ولا فوق (حل قصّ Samsung مع overflow-hidden)
   const [openUp, setOpenUp] = useState(false);
 
-  // ✅ تحويل avatar_path إلى Signed URL (يشتغل حتى لو bucket private)
+  // تحويل avatar_path إلى Signed URL
   async function resolveAvatarUrl(path: string | null): Promise<string | null> {
     if (!path) return null;
 
@@ -52,14 +56,9 @@ export default function ProfileMenu({ className = "" }: { className?: string }) 
 
         const {
           data: { user },
-          error: uErr,
         } = await supabase.auth.getUser();
 
         if (!alive) return;
-
-        if (uErr) {
-          console.error("ProfileMenu auth.getUser error", uErr);
-        }
 
         if (!user) {
           setProfile(null);
@@ -67,17 +66,13 @@ export default function ProfileMenu({ className = "" }: { className?: string }) 
           return;
         }
 
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from("profiles")
           .select("full_name, username, avatar_path")
           .eq("id", user.id)
           .maybeSingle();
 
         if (!alive) return;
-
-        if (error) {
-          console.error("ProfileMenu profiles error", error);
-        }
 
         const finalAvatarUrl = await resolveAvatarUrl(
           (data as any)?.avatar_path ?? null
@@ -91,8 +86,6 @@ export default function ProfileMenu({ className = "" }: { className?: string }) 
           email: user.email ?? null,
           avatar_url: finalAvatarUrl,
         });
-      } catch (e) {
-        console.error("ProfileMenu load profile error", e);
       } finally {
         if (alive) setLoadingProfile(false);
       }
@@ -103,7 +96,7 @@ export default function ProfileMenu({ className = "" }: { className?: string }) 
     };
   }, []);
 
-  // إغلاق المنيو عند الضغط خارجها أو زر Esc
+  // إغلاق المنيو
   useEffect(() => {
     if (!profileMenuOpen) return;
 
@@ -126,24 +119,19 @@ export default function ProfileMenu({ className = "" }: { className?: string }) 
     };
   }, [profileMenuOpen]);
 
-  // ✅ عند فتح القائمة: نقرر إذا بتتقص تحت، نفتحها فوق
+  // تحديد فتح فوق/تحت
   useEffect(() => {
     if (!profileMenuOpen) return;
 
-    // ارتفاع تقريبي للقائمة (عدد العناصر * ارتفاع سطر + رأس)
-    // هذا ثابت تقريبًا عندك، ومتين بدون قياسات معقدة
     const MENU_H = 260;
     const MARGIN = 12;
 
-    // نجيب مكان الزر (avatar button) من داخل نفس wrapper
     const btn = profileMenuRef.current?.querySelector("button");
     if (!btn) return;
 
     const r = (btn as HTMLButtonElement).getBoundingClientRect();
     const spaceBelow = window.innerHeight - r.bottom;
-    const shouldOpenUp = spaceBelow < MENU_H + MARGIN;
-
-    setOpenUp(shouldOpenUp);
+    setOpenUp(spaceBelow < MENU_H + MARGIN);
   }, [profileMenuOpen]);
 
   const displayName = useMemo(() => {
@@ -212,9 +200,6 @@ export default function ProfileMenu({ className = "" }: { className?: string }) 
             height={36}
             className="h-full w-full object-cover"
             unoptimized
-            onError={() => {
-              // لا نكسر الصفحة
-            }}
           />
         ) : (
           initials
@@ -229,16 +214,8 @@ export default function ProfileMenu({ className = "" }: { className?: string }) 
             "shadow-xl overflow-hidden text-sm",
             "ring-1 ring-black/5",
             "z-[2147483647]",
-            // ✅ نفس اتجاه الفتح، فقط نبدّل فوق/تحت حسب الحاجة
             openUp ? "bottom-full mb-2" : "mt-2",
           ].join(" ")}
-          style={{
-            opacity: 1,
-            backgroundColor: "#ffffff",
-            filter: "none",
-            WebkitFilter: "none",
-            transform: "translateZ(0)",
-          }}
         >
           {/* رأس القائمة */}
           <div className="px-3 py-2 border-b border-slate-100">
@@ -246,18 +223,20 @@ export default function ProfileMenu({ className = "" }: { className?: string }) 
               {loadingProfile ? "..." : displayName}
             </div>
             {handleName && !loadingProfile ? (
-              <div className="text-xs text-slate-500 truncate">@{handleName}</div>
+              <div className="text-xs text-slate-500 truncate">
+                @{handleName}
+              </div>
             ) : null}
           </div>
 
-          {/* العناصر المشتركة */}
+          {/* الأزرار – تم تعديلها فقط */}
           <button
             type="button"
             onClick={() => {
               setProfileMenuOpen(false);
               goPublicProfile();
             }}
-            className="w-full text-start px-4 py-2 hover:bg-slate-50"
+            className="w-full text-start px-4 py-2 text-slate-900 font-semibold hover:bg-slate-50"
           >
             ملفي الشخصي
           </button>
@@ -268,7 +247,7 @@ export default function ProfileMenu({ className = "" }: { className?: string }) 
               setProfileMenuOpen(false);
               router.push("/admin");
             }}
-            className="w-full text-start px-4 py-2 hover:bg-slate-50"
+            className="w-full text-start px-4 py-2 text-slate-900 font-semibold hover:bg-slate-50"
           >
             لوحة التحكم
           </button>
@@ -279,12 +258,12 @@ export default function ProfileMenu({ className = "" }: { className?: string }) 
               setProfileMenuOpen(false);
               router.push("/patient/profile");
             }}
-            className="w-full text-start px-4 py-2 hover:bg-slate-50"
+            className="w-full text-start px-4 py-2 text-slate-900 font-semibold hover:bg-slate-50"
           >
             ملفي الصحي
           </button>
 
-          {/* ✅ زر "خاص للطبيب" (أحمر + بولد) */}
+          {/* زر الطبيب (كما هو) */}
           <button
             type="button"
             onClick={() => {
@@ -302,7 +281,7 @@ export default function ProfileMenu({ className = "" }: { className?: string }) 
               setProfileMenuOpen(false);
               router.push("/settings");
             }}
-            className="w-full text-start px-4 py-2 hover:bg-slate-50"
+            className="w-full text-start px-4 py-2 text-slate-900 font-semibold hover:bg-slate-50"
           >
             الإعدادات
           </button>
@@ -313,7 +292,7 @@ export default function ProfileMenu({ className = "" }: { className?: string }) 
               setProfileMenuOpen(false);
               handleLogout();
             }}
-            className="w-full text-start px-4 py-2 text-red-600 hover:bg-slate-50"
+            className="w-full text-start px-4 py-2 text-red-700 font-semibold hover:bg-red-50"
           >
             خروج
           </button>
