@@ -63,6 +63,7 @@ export default function AdminSettingsPage() {
   const [roomVitalsEnabled, setRoomVitalsEnabled] = useState(true);
   const [roomSafetyEnabled, setRoomSafetyEnabled] = useState(true);
   const [roomSafetyImageUrl, setRoomSafetyImageUrl] = useState("");
+
   // ✅ جديد: التحكم في رفع الملفات (صور / PDF) أثناء الجلسة
   const [filesEnabled, setFilesEnabled] = useState(true);
 
@@ -84,8 +85,8 @@ export default function AdminSettingsPage() {
           getSystemSettingString("site_name", "DR4X"),
           getSystemSettingString("site_logo_url", "/dr4x-logo.png"),
         ]);
-
         if (!alive) return;
+
         setSiteName((name || "DR4X").trim() || "DR4X");
         setSiteLogoUrl((logo || "/dr4x-logo.png").trim());
 
@@ -119,9 +120,11 @@ export default function AdminSettingsPage() {
         setRoomVitalsEnabled(vVitals ?? true);
         setRoomSafetyEnabled(vSafety ?? true);
         setRoomSafetyImageUrl((vSafetyImg || "").trim());
+
         setFilesEnabled(liveFilesFlag ?? true); // ✅ جديد
       } catch (e: any) {
         if (!alive) return;
+
         setErrorMsg(
           e?.message ?? "تعذر تحميل الإعدادات. قد تكون مشكلة في الصلاحيات."
         );
@@ -183,6 +186,7 @@ export default function AdminSettingsPage() {
           "dr_room_safety_image_url",
           roomSafetyImageUrl.trim()
         ),
+
         // ✅ جديد: المفتاح العام للتحكم في رفع الملفات في الجلسة
         setSystemSettingRaw(
           "live_files_enabled",
@@ -194,7 +198,8 @@ export default function AdminSettingsPage() {
       setTimeout(() => setSaveState("idle"), 1500);
     } catch (e: any) {
       setErrorMsg(
-        e?.message ?? "تعذر حفظ الإعدادات. تحقق من RLS لجدول system_settings_kv."
+        e?.message ??
+          "تعذر حفظ الإعدادات. تحقق من RLS لجدول system_settings_kv."
       );
       setSaveState("error");
       setTimeout(() => setSaveState("idle"), 2000);
@@ -288,15 +293,16 @@ export default function AdminSettingsPage() {
         <h2 className="text-sm font-semibold text-emerald-200 mb-1">
           إعدادات غرفة الكشف (Doctor Consultation Room)
         </h2>
+
         <p className="text-xs text-slate-400 mb-2">
           هذه الإعدادات تتحكم في صفحة{" "}
           <code className="text-[11px] bg-slate-900 px-1.5 py-0.5 rounded">
             /doctor/consultations/[id]
           </code>{" "}
-          بدون أي تعديل على الجداول. الكود يقرأ القيم من
+          بدون أي تعديل على الجداول. الكود يقرأ القيم من{" "}
           <code className="text-[11px] bg-slate-900 px-1.5 py-0.5 rounded ms-1">
             system_settings_kv
-          </code>
+          </code>{" "}
           .
         </p>
 
@@ -311,11 +317,7 @@ export default function AdminSettingsPage() {
               البث أو الشات.
             </div>
           </div>
-          <Toggle
-            checked={roomEnabled}
-            onChange={setRoomEnabled}
-            disabled={loading}
-          />
+          <Toggle checked={roomEnabled} onChange={setRoomEnabled} disabled={loading} />
         </div>
 
         {/* الصوت + الفيديو + الشات + رفع الملفات */}
@@ -445,9 +447,7 @@ export default function AdminSettingsPage() {
             </div>
 
             <div className="space-y-1">
-              <div className="text-xs text-slate-400 mb-1">
-                معاينة (إن وجدت)
-              </div>
+              <div className="text-xs text-slate-400 mb-1">معاينة (إن وجدت)</div>
               <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-2 flex items-center justify-center min-h-[80px]">
                 {roomSafetyImageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -466,6 +466,7 @@ export default function AdminSettingsPage() {
                   </span>
                 )}
               </div>
+
               <button
                 type="button"
                 onClick={() => setRoomSafetyImageUrl("")}

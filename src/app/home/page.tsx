@@ -428,10 +428,79 @@ function RightPanelMock() {
 }
 
 /* ========================= Home Page ========================= */
+type GlobalAdType = "image" | "video" | "audio";
+
 export default function HomePage() {
   const router = useRouter();
   const [refreshKey, setRefreshKey] = useState(0);
   const [composerOpen, setComposerOpen] = useState(false);
+
+  // ✅ (إضافة فقط) إعلان عام
+  const [adVisible, setAdVisible] = useState(false);
+  const [adType, setAdType] = useState<GlobalAdType>("image");
+  const [adUrl, setAdUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    let t: any = null;
+
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("system_settings")
+          .select("key, value, value_number")
+          .in("key", [
+            "global_ad_enabled",
+            "global_ad_type",
+            "global_ad_path",
+            "global_ad_duration",
+          ]);
+
+        if (!alive) return;
+        if (error || !data) return;
+
+        const map: Record<string, any> = Object.fromEntries(
+          data.map((r: any) => [r.key, r.value ?? r.value_number])
+        );
+
+        const enabled = String(map.global_ad_enabled ?? "false") === "true";
+        const type = (String(map.global_ad_type ?? "image") as GlobalAdType) || "image";
+        const path = String(map.global_ad_path ?? "").trim();
+        const duration = Number(map.global_ad_duration ?? 30);
+
+        if (!enabled) return;
+        if (!path) return;
+
+        // path expected: "bucket/objectPath" مثل: "ads-images/ad.webp"
+        const firstSlash = path.indexOf("/");
+        if (firstSlash <= 0) return;
+
+        const bucket = path.slice(0, firstSlash);
+        const objectPath = path.slice(firstSlash + 1);
+
+        const { data: pub } = supabase.storage.from(bucket).getPublicUrl(objectPath);
+        const publicUrl = pub?.publicUrl ? `${pub.publicUrl}?t=${Date.now()}` : null;
+        if (!publicUrl) return;
+
+        setAdType(type);
+        setAdUrl(publicUrl);
+        setAdVisible(true);
+
+        const ms = Math.max(3, Math.min(60, duration || 30)) * 1000;
+        t = setTimeout(() => {
+          if (!alive) return;
+          setAdVisible(false);
+        }, ms);
+      } catch {
+        // لا نكسر الصفحة
+      }
+    })();
+
+    return () => {
+      alive = false;
+      if (t) clearTimeout(t);
+    };
+  }, []);
 
   return (
     <AppShell
@@ -458,6 +527,49 @@ export default function HomePage() {
       }
       rightPanel={<RightPanelMock />}
     >
+      {/* ✅ (إضافة فقط) طبقة الإعلان فوق الصفحة بدون تغيير أي شيء بالهوم */}
+      {adVisible && adUrl ? (
+        <div className="fixed inset-0 z-[2147483646] bg-black/70 flex items-center justify-center p-4">
+          <div className="relative w-full max-w-[900px]">
+            <button
+              type="button"
+              onClick={() => setAdVisible(false)}
+              className="absolute -top-3 -end-3 h-10 w-10 rounded-full bg-white text-slate-900 font-extrabold shadow grid place-items-center"
+              aria-label="Close ad"
+              title="إغلاق"
+            >
+              ×
+            </button>
+
+            <div className="rounded-2xl bg-black shadow-2xl overflow-hidden border border-white/10">
+              {adType === "image" ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={adUrl}
+                  alt="Ad"
+                  className="w-full h-auto max-h-[80vh] object-contain bg-black"
+                  loading="eager"
+                />
+              ) : adType === "video" ? (
+                <video
+                  src={adUrl}
+                  className="w-full max-h-[80vh] bg-black"
+                  controls
+                  autoPlay
+                  muted
+                  playsInline
+                />
+              ) : (
+                <div className="p-6 bg-black text-white">
+                  <div className="text-sm mb-3 opacity-80">Advertisement Audio</div>
+                  <audio src={adUrl} controls autoPlay />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <NewPostComposer
         onPosted={() => {
           setRefreshKey((k) => k + 1);
