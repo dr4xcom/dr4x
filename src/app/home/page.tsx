@@ -301,8 +301,14 @@ function SidebarMock({ onOpenComposer }: { onOpenComposer: () => void }) {
             </button>
 
             {menuOpen && (
-              // ✅ التعديل الوحيد: text-slate-900 + z-50 (لتثبيت الأبيض وإلغاء الشفافية على بعض الجوالات)
-              <div className="absolute end-0 bottom-full mb-2 w-44 rounded-2xl border bg-white text-slate-900 shadow-lg overflow-hidden z-50">
+              <div
+                className={[
+                  "absolute end-0 bottom-full mb-2 w-44 rounded-2xl border",
+                  "bg-white opacity-100 shadow-lg overflow-hidden",
+                  "ring-1 ring-black/5",
+                  "z-[9999] isolate",
+                ].join(" ")}
+              >
                 {/* ملفي الشخصي -> /u/[username] */}
                 <button
                   type="button"
@@ -433,13 +439,13 @@ export default function HomePage() {
       header={
         <div className="relative w-full">
           {/* عنوان "لك" ثابت في مكانه */}
-          <div className="pr-[100px] text-slate-900 font-extrabold text-2xl relative inline-block">
+          <div className="pr-[100px] text-slate-900 font-extrabold text-2xl relative inline-block -right-[15px]">
             لك
             <span className="absolute left-1/2 -translate-x-1/2 -bottom-3 h-[4px] w-16 rounded-full bg-sky-500" />
           </div>
 
           {/* زر "متابعون" مع إزاحة مناسبة عن "لك" */}
-          <div className="absolute top-1/2 -translate-y-1/2 right-[350px]">
+          <div className="absolute top-1/2 -translate-y-1/2 right-[140px] sm:right-[350px]">
             <button
               type="button"
               onClick={() => router.push("/following")}
